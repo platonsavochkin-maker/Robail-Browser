@@ -1,0 +1,6 @@
+{
+  "name": "Robail Browser",
+  "description": "High-performance, futuristic web browser with intelligent AI copilot, multi-tab management, live web proxy, developer tools, and rich built-in web apps.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
