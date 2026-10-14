@@ -371,13 +371,13 @@ export const OmegaAssistant: React.FC<OmegaAssistantProps> = ({
       lower.includes('версия') ||
       lower.includes('version')
     ) {
-      const spokenReply = 'Я работаю на версии 5.0, а Браузер работает на версии 15.0.';
+      const spokenReply = 'Я работаю на версии 6.0, а Браузер работает на версии 16.0.';
       setMessages((prev) => [
         ...prev,
         {
           id: 'ai-ver-' + Date.now(),
           sender: 'assistant',
-          text: `ℹ️ **Информация о версиях системы:**\n\n• **ИИ Омега**: работает на версии **5.0**\n• **Браузер Robail**: работает на версии **15.0**`,
+          text: `ℹ️ **Информация о версиях системы:**\n\n• **ИИ Омега**: работает на версии **6.0**\n• **Браузер Robail**: работает на версии **16.0**`,
           timestamp: Date.now(),
         },
       ]);
@@ -575,7 +575,7 @@ export const OmegaAssistant: React.FC<OmegaAssistantProps> = ({
       lower.includes('ты кто')
     ) {
       const reply =
-        'Я ваш персональный голосовой ИИ-ассистент Омега. 🌟\n\nЯ умею:\n• Мгновенно открывать YouTube, Steam или любой другой сайт\n• Знаю историю создания браузера и версии (Омега 5.0, Браузер 15.0)\n• Рассказывать шутки и интересные научные факты\n• Подсказывать погоду в любом городе мира\n• Давать ссылки и отвечать на любые ваши вопросы голосом и текстом!';
+        'Я ваш персональный голосовой ИИ-ассистент Омега. 🌟\n\nЯ умею:\n• Мгновенно открывать YouTube, Steam или любой другой сайт\n• Знаю историю создания браузера и версии (Омега 6.0, Браузер 16.0)\n• Рассказывать шутки и интересные научные факты\n• Подсказывать погоду в любом городе мира\n• Давать ссылки и отвечать на любые ваши вопросы голосом и текстом!';
       setMessages((prev) => [
         ...prev,
         {
@@ -707,7 +707,7 @@ export const OmegaAssistant: React.FC<OmegaAssistantProps> = ({
             <div className="flex items-center gap-1.5">
               <h3 className="font-bold text-sm text-white">Омега</h3>
               <span className="px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                v5.0
+                v6.0
               </span>
             </div>
             <p className="text-[10px] text-slate-400">
@@ -813,7 +813,7 @@ export const OmegaAssistant: React.FC<OmegaAssistantProps> = ({
           className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-800 hover:bg-indigo-600/30 hover:border-indigo-500/40 border border-slate-700 text-slate-300 hover:text-white whitespace-nowrap transition-colors cursor-pointer"
         >
           <Info className="w-3 h-3 text-indigo-400" />
-          <span>Версии (5.0 / 15.0) 🔢</span>
+          <span>Версии (6.0 / 16.0) 🔢</span>
         </button>
 
         <button

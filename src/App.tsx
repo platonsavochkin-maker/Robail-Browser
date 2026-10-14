@@ -34,6 +34,47 @@ export default function App() {
 
   const [tabYouTubeModes, setTabYouTubeModes] = useState<Record<string, 'turbo' | 'proxy'>>({});
 
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('robail_theme');
+      return saved === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  const [assistantEnabled, setAssistantEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('robail_assistant_enabled');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const handleToggleTheme = (newTheme: 'dark' | 'light') => {
+    setTheme(newTheme);
+    try {
+      localStorage.setItem('robail_theme', newTheme);
+    } catch {}
+  };
+
+  const handleToggleAssistant = (enabled: boolean) => {
+    setAssistantEnabled(enabled);
+    try {
+      localStorage.setItem('robail_assistant_enabled', String(enabled));
+    } catch {}
+  };
+
+  const handleClearBrowsingData = () => {
+    try {
+      localStorage.removeItem('robail_history');
+      setTabs((prev) =>
+        prev.map((t) => (t.id === activeTabId ? t : createNewTab('robail://start')))
+      );
+    } catch {}
+  };
+
   const [autoDeleteUnsafe, setAutoDeleteUnsafe] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('robail_auto_delete_unsafe');
@@ -349,7 +390,11 @@ export default function App() {
   );
 
   return (
-    <div className="w-screen h-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden select-none font-sans relative">
+    <div
+      className={`w-screen h-screen flex flex-col overflow-hidden select-none font-sans relative transition-colors ${
+        theme === 'light' ? 'bg-slate-100 text-slate-800' : 'bg-slate-950 text-slate-100'
+      }`}
+    >
       {/* Top Notification Toast when a site is deleted */}
       {notification && (
         <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 max-w-xl w-full px-4 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -374,7 +419,7 @@ export default function App() {
             </div>
             <button
               onClick={() => setNotification(null)}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -389,6 +434,7 @@ export default function App() {
         onSelectTab={setActiveTabId}
         onCloseTab={handleCloseTab}
         onNewTab={handleNewTab}
+        theme={theme}
       />
 
       {/* Omnibar with Site Deletion Control and Corner Lock */}
@@ -402,12 +448,21 @@ export default function App() {
         onDeleteCurrentSite={() => handleDeleteSite(activeTab.url)}
         onOpenQuarantineList={() => setShowQuarantineModal(true)}
         quarantinedCount={quarantinedDomains.length}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
+        assistantEnabled={assistantEnabled}
+        onToggleAssistant={handleToggleAssistant}
+        onClearData={handleClearBrowsingData}
       />
 
       {/* Main Browser Canvas */}
-      <div className="flex-1 w-full h-full relative overflow-hidden bg-slate-900 flex flex-col">
+      <div
+        className={`flex-1 w-full h-full relative overflow-hidden flex flex-col transition-colors ${
+          theme === 'light' ? 'bg-slate-100' : 'bg-slate-900'
+        }`}
+      >
         {activeTab.mode === 'start' ? (
-          <StartPage onNavigate={handleNavigate} />
+          <StartPage onNavigate={handleNavigate} theme={theme} />
         ) : activeTab.url === 'robail://clan' || activeTab.url === 'robail://arcade' ? (
           <ArcadeGames initialGame="clan" />
         ) : isCurrentUrlBlocked ? (

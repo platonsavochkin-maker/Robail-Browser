@@ -15,10 +15,12 @@ import {
   AlertTriangle,
   Flame,
   Sparkles,
+  MoreVertical,
 } from 'lucide-react';
 import { Tab } from '../types/browser';
 import { formatUrlForDisplay } from '../utils/browserUtils';
 import { OmegaAssistant } from './OmegaAssistant';
+import { BrowserSettingsMenu } from './BrowserSettingsMenu';
 
 interface OmnibarProps {
   activeTab: Tab;
@@ -30,6 +32,11 @@ interface OmnibarProps {
   onDeleteCurrentSite?: () => void;
   onOpenQuarantineList?: () => void;
   quarantinedCount?: number;
+  theme?: 'dark' | 'light';
+  onToggleTheme?: (theme: 'dark' | 'light') => void;
+  assistantEnabled?: boolean;
+  onToggleAssistant?: (enabled: boolean) => void;
+  onClearData?: () => void;
 }
 
 export const Omnibar: React.FC<OmnibarProps> = ({
@@ -42,12 +49,27 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   onDeleteCurrentSite,
   onOpenQuarantineList,
   quarantinedCount = 0,
+  theme = 'dark',
+  onToggleTheme,
+  assistantEnabled = true,
+  onToggleAssistant,
+  onClearData,
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [isSecurityOpen, setIsSecurityOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const isLight = theme === 'light';
+
+  // If assistant was turned off in settings, make sure open state is reset
+  useEffect(() => {
+    if (!assistantEnabled && isAssistantOpen) {
+      setIsAssistantOpen(false);
+    }
+  }, [assistantEnabled, isAssistantOpen]);
 
   // Sync input value with current tab URL
   useEffect(() => {
@@ -74,17 +96,29 @@ export const Omnibar: React.FC<OmnibarProps> = ({
 
   const isSecure = activeTab.security.isSecure;
   const isDangerous = activeTab.security.isDangerous || Boolean(activeTab.security.threatType);
-  const isWebPage = Boolean(activeTab.url && activeTab.url !== 'robail://start' && !activeTab.url.startsWith('robail://'));
+  const isWebPage = Boolean(
+    activeTab.url && activeTab.url !== 'robail://start' && !activeTab.url.startsWith('robail://')
+  );
 
   return (
-    <div className="h-10 bg-slate-900 border-b border-slate-800/80 px-3 flex items-center justify-between gap-2 select-none z-40 relative">
+    <div
+      className={`h-10 border-b px-3 flex items-center justify-between gap-2 select-none z-40 relative transition-colors ${
+        isLight
+          ? 'bg-white border-slate-200 text-slate-800'
+          : 'bg-slate-900 border-slate-800/80 text-slate-100'
+      }`}
+    >
       {/* Navigation Controls */}
       <div className="flex items-center gap-1">
         <button
           onClick={onBack}
           disabled={activeTab.historyIndex <= 0}
           title="Назад"
-          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          className={`p-1.5 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-colors ${
+            isLight
+              ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800'
+          }`}
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -92,15 +126,23 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           onClick={onForward}
           disabled={activeTab.historyIndex >= activeTab.history.length - 1}
           title="Вперёд"
-          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          className={`p-1.5 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-colors ${
+            isLight
+              ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800'
+          }`}
         >
           <ArrowRight className="w-4 h-4" />
         </button>
         <button
           onClick={onReload}
           title="Обновить страницу"
-          className={`p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors ${
-            activeTab.isLoading ? 'animate-spin text-amber-400' : ''
+          className={`p-1.5 rounded-lg transition-colors ${
+            activeTab.isLoading ? 'animate-spin text-amber-500' : ''
+          } ${
+            isLight
+              ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800'
           }`}
         >
           <RotateCw className="w-4 h-4" />
@@ -108,7 +150,11 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         <button
           onClick={onHome}
           title="Главная"
-          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+          className={`p-1.5 rounded-lg transition-colors ${
+            isLight
+              ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800'
+          }`}
         >
           <Home className="w-4 h-4" />
         </button>
@@ -117,14 +163,22 @@ export const Omnibar: React.FC<OmnibarProps> = ({
       {/* Address Bar with Dynamic Lock in the Corner */}
       <form onSubmit={handleSubmit} className="flex-1 max-w-4xl relative">
         <div
-          className={`h-8 w-full rounded-lg bg-slate-950 border transition-all flex items-center px-3 gap-2 ${
-            isFocused
-              ? 'border-amber-400 ring-2 ring-amber-400/20'
+          className={`h-8 w-full rounded-lg border transition-all flex items-center px-3 gap-2 ${
+            isLight
+              ? isFocused
+                ? 'bg-white border-amber-500 ring-2 ring-amber-400/20'
+                : isDangerous
+                ? 'bg-rose-50 border-rose-400 ring-1 ring-rose-400/30'
+                : isSecure
+                ? 'bg-slate-100 border-slate-200 hover:border-slate-300'
+                : 'bg-rose-50/50 border-rose-400/80 hover:border-rose-400'
+              : isFocused
+              ? 'bg-slate-950 border-amber-400 ring-2 ring-amber-400/20'
               : isDangerous
-              ? 'border-rose-500 bg-rose-950/20 ring-1 ring-rose-500/40'
+              ? 'bg-rose-950/20 border-rose-500 ring-1 ring-rose-500/40'
               : isSecure
-              ? 'border-slate-800 hover:border-slate-700'
-              : 'border-rose-500/80 hover:border-rose-400'
+              ? 'bg-slate-950 border-slate-800 hover:border-slate-700'
+              : 'bg-slate-950 border-rose-500/80 hover:border-rose-400'
           }`}
         >
           {/* Dynamic Corner Lock Indicator (Closed = Secure / Open = Insecure) */}
@@ -132,24 +186,20 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             type="button"
             onClick={() => setIsSecurityOpen(!isSecurityOpen)}
             title={activeTab.security.statusText}
-            className={`flex items-center gap-1.5 py-0.5 px-1.5 rounded-md transition-colors flex-shrink-0 ${
+            className={`flex items-center gap-1.5 py-0.5 px-1.5 rounded-md transition-colors flex-shrink-0 cursor-pointer ${
               isSecure
-                ? 'text-emerald-400 hover:bg-emerald-500/10'
+                ? 'text-emerald-500 hover:bg-emerald-500/10'
                 : 'text-rose-500 hover:bg-rose-500/10 bg-rose-500/10'
             }`}
           >
             {isSecure ? (
-              /* ЗАКРЫТЫЙ ЗАМОЧЕК для безопасного домена */
-              <Lock className="w-3.5 h-3.5 text-emerald-400" />
+              <Lock className="w-3.5 h-3.5 text-emerald-500" />
             ) : (
-              /* ОТКРЫТЫЙ ЗАМОЧЕК для небезопасного домена */
-              <>
-                <LockOpen className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
-                <span className="text-[10px] font-bold text-rose-400 uppercase tracking-tight">
-                  {isDangerous ? 'УГРОЗА' : 'Небезопасно'}
-                </span>
-              </>
+              <LockOpen className="w-3.5 h-3.5 text-rose-500 animate-bounce" />
             )}
+            <span className="text-[10px] font-mono font-medium hidden md:inline">
+              {isSecure ? 'Замок закрыт' : 'Замок открыт ⚠'}
+            </span>
           </button>
 
           <input
@@ -157,112 +207,97 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onFocus={() => {
-              setIsFocused(true);
-              inputRef.current?.select();
-            }}
+            onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             onKeyDown={handleKeyDown}
-            placeholder="Введите веб-адрес или поисковый запрос (например, wikipedia.org или youtube.com)..."
-            className="flex-1 bg-transparent text-xs text-slate-100 placeholder-slate-500 outline-none select-text"
+            placeholder="Введите поисковый запрос или URL..."
+            className={`w-full bg-transparent text-xs font-mono outline-none select-text ${
+              isLight
+                ? 'text-slate-900 placeholder-slate-400'
+                : 'text-slate-200 placeholder-slate-500'
+            }`}
           />
 
-          {inputValue.trim() && isFocused && (
-            <button type="submit" className="text-amber-400 hover:text-amber-300">
-              <ArrowRightCircle className="w-4 h-4" />
+          {inputValue && (
+            <button
+              type="button"
+              onClick={() => {
+                setInputValue('');
+                inputRef.current?.focus();
+              }}
+              className={`p-1 rounded-md transition-colors ${
+                isLight
+                  ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-200'
+                  : 'text-slate-500 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <X className="w-3 h-3" />
             </button>
           )}
 
-          {activeTab.url && activeTab.url !== 'robail://start' && (
-            <a
-              href={activeTab.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Запустить официальную ссылку сайта"
-              className="p-1 rounded text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors flex items-center flex-shrink-0"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
+          <button
+            type="submit"
+            className="p-1 rounded-md text-amber-500 hover:bg-amber-500/10 transition-colors"
+            title="Перейти"
+          >
+            <ArrowRightCircle className="w-3.5 h-3.5" />
+          </button>
         </div>
 
-        {/* Security Details Dropdown Modal */}
+        {/* Security Info Popover */}
         {isSecurityOpen && (
-          <div className="absolute top-full left-0 mt-2 w-88 bg-slate-900 border border-slate-750 rounded-xl shadow-2xl p-4 text-xs z-50 animate-in fade-in zoom-in-95">
-            <div className="flex items-start justify-between mb-3 pb-2 border-b border-slate-800">
+          <div
+            className={`absolute top-10 left-0 w-80 rounded-xl p-4 shadow-2xl z-50 text-xs animate-in fade-in zoom-in-95 duration-150 border ${
+              isLight
+                ? 'bg-white border-slate-200 text-slate-800 ring-1 ring-slate-900/5'
+                : 'bg-slate-900 border-slate-750 text-slate-200'
+            }`}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800 mb-3">
               <div className="flex items-center gap-2">
                 {isSecure ? (
-                  <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-                    <Lock className="w-4 h-4" />
-                  </div>
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
                 ) : (
-                  <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500">
-                    <LockOpen className="w-4 h-4" />
-                  </div>
+                  <AlertTriangle className="w-4 h-4 text-rose-500" />
                 )}
-                <div>
-                  <h4 className={`font-bold text-xs ${isSecure ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {activeTab.security.statusText}
-                  </h4>
-                  <span className="text-[10px] text-slate-400 font-mono truncate max-w-[170px] block">
-                    {activeTab.security.hostname}
-                  </span>
-                </div>
+                <span className="font-bold text-xs">
+                  {isSecure ? 'Безопасное соединение' : 'Небезопасное подключение'}
+                </span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsSecurityOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <p className="text-slate-300 leading-relaxed mb-3 text-[11px]">
-              {activeTab.security.reason}
-            </p>
-
-            {/* Antivirus & Anti-Piracy Check Report */}
-            <div className="mb-3 p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-2 text-[10px]">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                  Антивирусная проверка:
-                </span>
-                <span className={`font-bold ${activeTab.security.threatType === 'virus' ? 'text-rose-400' : 'text-emerald-400'}`}>
-                  {activeTab.security.threatType === 'virus' ? 'ОБНАРУЖЕН ВИРУС' : 'Угроз не обнаружено'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3 text-amber-400" />
-                  Фильтр пиратских сайтов:
-                </span>
-                <span className={`font-bold ${activeTab.security.threatType === 'pirate' ? 'text-rose-400' : 'text-emerald-400'}`}>
-                  {activeTab.security.threatType === 'pirate' ? 'ПИРАТСКИЙ РЕСУРС' : 'Лицензионный источник'}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-1.5 bg-slate-950/80 p-2.5 rounded-lg border border-slate-850 text-[10px] mb-3">
+            <div className="space-y-2 text-[11px] mb-3">
               <div className="flex justify-between">
-                <span className="text-slate-500">Протокол:</span>
-                <span className={`font-mono font-bold uppercase ${isSecure ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {activeTab.security.protocol}
+                <span className="text-slate-400">Статус:</span>
+                <span className={isSecure ? 'text-emerald-500 font-semibold' : 'text-rose-500 font-bold'}>
+                  {activeTab.security.statusText}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Хост:</span>
+                <span className="font-mono text-slate-600 dark:text-slate-300">
+                  {activeTab.security.hostname || 'start'}
                 </span>
               </div>
               {activeTab.security.certificateIssuer && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Сертификат:</span>
-                  <span className="text-slate-300 truncate max-w-[150px]">
+                  <span className="text-slate-400">Сертификат:</span>
+                  <span className="text-slate-600 dark:text-slate-300">
                     {activeTab.security.certificateIssuer}
                   </span>
                 </div>
               )}
               {activeTab.security.encryption && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Шифрование:</span>
-                  <span className="text-slate-300 font-mono">
+                  <span className="text-slate-400">Шифрование:</span>
+                  <span className="text-slate-600 dark:text-slate-300 font-mono">
                     {activeTab.security.encryption}
                   </span>
                 </div>
@@ -277,7 +312,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   setIsSecurityOpen(false);
                   onDeleteCurrentSite();
                 }}
-                className="w-full py-2 px-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md mb-2"
+                className="w-full py-2 px-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md mb-2 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Удалить этот сайт (Небезопасный)</span>
@@ -293,37 +328,45 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         )}
       </form>
 
-      {/* Right Controls: Assistant + Security Actions */}
+      {/* Right Controls: Assistant + Security Actions + Three Dots Settings */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        {/* Discreet AI Assistant Button: "чтобы кнопка не обращала так внимание, но она была" */}
-        <button
-          type="button"
-          onClick={() => setIsAssistantOpen(!isAssistantOpen)}
-          title="Голосовой и текстовый ассистент (шутки, погода, открыть YouTube и сайты)"
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all border ${
-            isAssistantOpen
-              ? 'bg-purple-950/70 border-purple-500/50 text-purple-200 ring-1 ring-purple-500/30'
-              : 'bg-slate-900/90 hover:bg-slate-850 border-slate-800 hover:border-purple-500/30 text-slate-400 hover:text-purple-300'
-          }`}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-purple-400/80" />
-          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-          <span className="font-medium text-[11px] text-slate-300 hover:text-white hidden sm:inline">
-            Ассистент
-          </span>
-        </button>
+        {/* Discreet AI Assistant Button: shown ONLY if assistantEnabled is true */}
+        {assistantEnabled && (
+          <button
+            type="button"
+            onClick={() => setIsAssistantOpen(!isAssistantOpen)}
+            title="Голосовой и текстовый ассистент Омега v6.0"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all border cursor-pointer ${
+              isAssistantOpen
+                ? isLight
+                  ? 'bg-purple-100 border-purple-400 text-purple-900 ring-1 ring-purple-300'
+                  : 'bg-purple-950/70 border-purple-500/50 text-purple-200 ring-1 ring-purple-500/30'
+                : isLight
+                ? 'bg-slate-100 hover:bg-purple-50 border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700'
+                : 'bg-slate-900/90 hover:bg-slate-850 border-slate-800 hover:border-purple-500/30 text-slate-400 hover:text-purple-300'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+            <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+            <span className="font-medium text-[11px] hidden sm:inline">
+              Омега
+            </span>
+          </button>
+        )}
 
         {isWebPage && onDeleteCurrentSite && (
           <button
             onClick={onDeleteCurrentSite}
             title="Говорю то, что этот сайт небезопасный — удалить сайт и заблокировать!"
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-sm ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer ${
               isDangerous
                 ? 'bg-rose-600 hover:bg-rose-500 text-white animate-pulse ring-2 ring-rose-400/40'
+                : isLight
+                ? 'bg-slate-100 hover:bg-rose-600 text-slate-700 hover:text-white border border-slate-200 hover:border-rose-500'
                 : 'bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white border border-slate-700 hover:border-rose-500'
             }`}
           >
-            <Trash2 className="w-3.5 h-3.5 text-rose-400 group-hover:text-white" />
+            <Trash2 className="w-3.5 h-3.5 text-rose-500 group-hover:text-white" />
             <span className="hidden sm:inline">
               {isDangerous ? 'Удалить опасный сайт' : 'Сайт небезопасный: Удалить'}
             </span>
@@ -335,25 +378,65 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           <button
             onClick={onOpenQuarantineList}
             title="Список удалённых небезопасных сайтов (Вирусы и пиратство)"
-            className="flex items-center gap-1 p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors"
+            className={`flex items-center gap-1 p-1.5 rounded-lg transition-colors cursor-pointer ${
+              isLight
+                ? 'text-slate-600 hover:text-amber-600 hover:bg-slate-100'
+                : 'text-slate-400 hover:text-amber-400 hover:bg-slate-800'
+            }`}
           >
-            <ShieldAlert className="w-4 h-4 text-amber-400" />
+            <ShieldAlert className="w-4 h-4 text-amber-500" />
             {quarantinedCount > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.2 bg-rose-500/20 text-rose-400 rounded-full border border-rose-500/40">
+              <span className="text-[10px] font-bold px-1.5 py-0.2 bg-rose-500/20 text-rose-500 rounded-full border border-rose-500/40">
                 {quarantinedCount}
               </span>
             )}
           </button>
         )}
+
+        {/* Three Dots Browser Settings Button: "три точки в той самой полоске" */}
+        <button
+          type="button"
+          data-settings-trigger="true"
+          onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+          title="Настройки браузера (тема, ассистент Омега, версии)"
+          className={`p-1.5 rounded-lg transition-all flex items-center justify-center cursor-pointer border ${
+            isSettingsOpen
+              ? isLight
+                ? 'bg-amber-100 border-amber-300 text-amber-900 ring-2 ring-amber-400/30'
+                : 'bg-slate-800 border-amber-400/50 text-amber-400 ring-2 ring-amber-400/30'
+              : isLight
+              ? 'bg-slate-100 hover:bg-slate-200 border-slate-250 text-slate-700 hover:text-slate-900'
+              : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white'
+          }`}
+        >
+          <MoreVertical className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Omega AI Assistant Popover */}
-      <OmegaAssistant
-        isOpen={isAssistantOpen}
-        onClose={() => setIsAssistantOpen(false)}
-        activeTab={activeTab}
-        onNavigate={onNavigate}
+      {/* Browser Settings Dropdown Menu (Three Dots) */}
+      <BrowserSettingsMenu
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        theme={theme}
+        onToggleTheme={onToggleTheme || (() => {})}
+        assistantEnabled={assistantEnabled}
+        onToggleAssistant={(enabled) => {
+          if (onToggleAssistant) onToggleAssistant(enabled);
+          if (!enabled) setIsAssistantOpen(false);
+        }}
+        onOpenQuarantine={onOpenQuarantineList}
+        onClearData={onClearData}
       />
+
+      {/* Omega AI Assistant Popover */}
+      {assistantEnabled && (
+        <OmegaAssistant
+          isOpen={isAssistantOpen}
+          onClose={() => setIsAssistantOpen(false)}
+          activeTab={activeTab}
+          onNavigate={onNavigate}
+        />
+      )}
     </div>
   );
 };
