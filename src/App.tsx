@@ -25,6 +25,7 @@ import { Omnibar } from './components/Omnibar';
 import { StartPage } from './components/StartPage';
 import { YouTubeView } from './components/sites/YouTubeView';
 import { ArcadeGames } from './components/ArcadeGames';
+import { InstallModal } from './components/InstallModal';
 
 export default function App() {
   const [quarantinedDomains, setQuarantinedDomains] = useState<string[]>(() => {
@@ -51,6 +52,32 @@ export default function App() {
       return true;
     }
   });
+
+  const [isInstalled, setIsInstalled] = useState<boolean>(() => {
+    try {
+      // Ensure v18 starts fresh by clearing legacy v16/unversioned keys
+      localStorage.removeItem('robail_is_installed');
+      return localStorage.getItem('robail_is_installed_v18') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [showInstallModal, setShowInstallModal] = useState(false);
+
+  const handleInstallComplete = () => {
+    setIsInstalled(true);
+    try {
+      localStorage.setItem('robail_is_installed_v18', 'true');
+    } catch {}
+  };
+
+  const handleResetInstall = () => {
+    setIsInstalled(false);
+    try {
+      localStorage.removeItem('robail_is_installed_v18');
+      localStorage.removeItem('robail_is_installed');
+    } catch {}
+  };
 
   const handleToggleTheme = (newTheme: 'dark' | 'light') => {
     setTheme(newTheme);
@@ -453,6 +480,9 @@ export default function App() {
         assistantEnabled={assistantEnabled}
         onToggleAssistant={handleToggleAssistant}
         onClearData={handleClearBrowsingData}
+        isInstalled={isInstalled}
+        onOpenInstall={() => setShowInstallModal(true)}
+        onResetInstall={handleResetInstall}
       />
 
       {/* Main Browser Canvas */}
@@ -710,6 +740,14 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Robail Browser Windows .EXE Installation Modal */}
+      <InstallModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+        onInstallComplete={handleInstallComplete}
+        isInstalled={isInstalled}
+        theme={theme}
+      />
     </div>
   );
 }

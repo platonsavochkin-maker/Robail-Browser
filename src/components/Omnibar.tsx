@@ -16,6 +16,7 @@ import {
   Flame,
   Sparkles,
   MoreVertical,
+  Download,
 } from 'lucide-react';
 import { Tab } from '../types/browser';
 import { formatUrlForDisplay } from '../utils/browserUtils';
@@ -37,6 +38,9 @@ interface OmnibarProps {
   assistantEnabled?: boolean;
   onToggleAssistant?: (enabled: boolean) => void;
   onClearData?: () => void;
+  isInstalled?: boolean;
+  onOpenInstall?: () => void;
+  onResetInstall?: () => void;
 }
 
 export const Omnibar: React.FC<OmnibarProps> = ({
@@ -54,6 +58,9 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   assistantEnabled = true,
   onToggleAssistant,
   onClearData,
+  isInstalled = false,
+  onOpenInstall,
+  onResetInstall,
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -70,6 +77,32 @@ export const Omnibar: React.FC<OmnibarProps> = ({
       setIsAssistantOpen(false);
     }
   }, [assistantEnabled, isAssistantOpen]);
+
+  // Auto-open Omega if launched with #omega, ?omega, or via installer event
+  useEffect(() => {
+    if (!assistantEnabled) return;
+
+    const checkHashAndSearch = () => {
+      const hash = window.location.hash.toLowerCase();
+      const search = window.location.search.toLowerCase();
+      if (hash.includes('omega') || search.includes('omega') || search.includes('assistant')) {
+        setIsAssistantOpen(true);
+      }
+    };
+
+    checkHashAndSearch();
+    window.addEventListener('hashchange', checkHashAndSearch);
+
+    const handleOpenOmegaEvent = () => {
+      setIsAssistantOpen(true);
+    };
+    window.addEventListener('robail-open-omega', handleOpenOmegaEvent);
+
+    return () => {
+      window.removeEventListener('hashchange', checkHashAndSearch);
+      window.removeEventListener('robail-open-omega', handleOpenOmegaEvent);
+    };
+  }, [assistantEnabled]);
 
   // Sync input value with current tab URL
   useEffect(() => {
@@ -114,7 +147,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           onClick={onBack}
           disabled={activeTab.historyIndex <= 0}
           title="Назад"
-          className={`p-1.5 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-colors ${
+          className={`p-1.5 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer ${
             isLight
               ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               : 'text-slate-300 hover:text-white hover:bg-slate-800'
@@ -126,7 +159,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           onClick={onForward}
           disabled={activeTab.historyIndex >= activeTab.history.length - 1}
           title="Вперёд"
-          className={`p-1.5 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-colors ${
+          className={`p-1.5 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer ${
             isLight
               ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               : 'text-slate-300 hover:text-white hover:bg-slate-800'
@@ -137,7 +170,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         <button
           onClick={onReload}
           title="Обновить страницу"
-          className={`p-1.5 rounded-lg transition-colors ${
+          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
             activeTab.isLoading ? 'animate-spin text-amber-500' : ''
           } ${
             isLight
@@ -150,7 +183,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         <button
           onClick={onHome}
           title="Главная"
-          className={`p-1.5 rounded-lg transition-colors ${
+          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
             isLight
               ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               : 'text-slate-300 hover:text-white hover:bg-slate-800'
@@ -225,7 +258,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                 setInputValue('');
                 inputRef.current?.focus();
               }}
-              className={`p-1 rounded-md transition-colors ${
+              className={`p-1 rounded-md transition-colors cursor-pointer ${
                 isLight
                   ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-200'
                   : 'text-slate-500 hover:text-white hover:bg-slate-800'
@@ -237,7 +270,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
 
           <button
             type="submit"
-            className="p-1 rounded-md text-amber-500 hover:bg-amber-500/10 transition-colors"
+            className="p-1 rounded-md text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer"
             title="Перейти"
           >
             <ArrowRightCircle className="w-3.5 h-3.5" />
@@ -267,7 +300,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
               <button
                 type="button"
                 onClick={() => setIsSecurityOpen(false)}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -328,14 +361,48 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         )}
       </form>
 
-      {/* Right Controls: Assistant + Security Actions + Three Dots Settings */}
+      {/* Right Controls: Install Button + Assistant + Security Actions + Three Dots Settings */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
+        {/* "Установить" Button: Prominent when not installed, accessible for reinstall when installed */}
+        {!isInstalled ? (
+          <button
+            type="button"
+            onClick={onOpenInstall}
+            title="Установить Robail Browser v18.0 на компьютер (RobailBrowser-v18.0-Setup.exe)"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-sm border cursor-pointer animate-in fade-in duration-200 ${
+              isLight
+                ? 'bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-900 ring-1 ring-amber-400/20'
+                : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-300 hover:text-white'
+            }`}
+          >
+            <Download className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+            <span className="hidden sm:inline">Установить</span>
+            <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500 text-black">
+              v18.0
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpenInstall}
+            title="Robail Browser v18.0 (нажмите, чтобы скачать повторно или переустановить)"
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors border cursor-pointer ${
+              isLight
+                ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
+                : 'bg-emerald-950/30 hover:bg-emerald-900/40 border-emerald-700/40 text-emerald-300'
+            }`}
+          >
+            <Download className="w-3 h-3 text-emerald-400" />
+            <span className="hidden md:inline text-[10px]">v18.0</span>
+          </button>
+        )}
+
         {/* Discreet AI Assistant Button: shown ONLY if assistantEnabled is true */}
         {assistantEnabled && (
           <button
             type="button"
             onClick={() => setIsAssistantOpen(!isAssistantOpen)}
-            title="Голосовой и текстовый ассистент Омега v6.0"
+            title="Голосовой и текстовый ассистент Омега v8.0"
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all border cursor-pointer ${
               isAssistantOpen
                 ? isLight
@@ -426,6 +493,9 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         }}
         onOpenQuarantine={onOpenQuarantineList}
         onClearData={onClearData}
+        isInstalled={isInstalled}
+        onOpenInstall={onOpenInstall}
+        onResetInstall={onResetInstall}
       />
 
       {/* Omega AI Assistant Popover */}

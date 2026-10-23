@@ -34,13 +34,18 @@ export const StartPage: React.FC<StartPageProps> = ({ onNavigate, theme = 'dark'
     >
       <div className="w-full max-w-xl flex flex-col items-center -mt-16">
         {/* Large Browser Name */}
-        <h1
-          className={`text-5xl md:text-6xl font-black tracking-widest mb-8 transition-colors ${
-            isLight ? 'text-slate-900' : 'text-white'
-          }`}
-        >
-          ROBAIL
-        </h1>
+        <div className="flex items-center gap-2.5 mb-8">
+          <h1
+            className={`text-5xl md:text-6xl font-black tracking-widest transition-colors ${
+              isLight ? 'text-slate-900' : 'text-white'
+            }`}
+          >
+            ROBAIL
+          </h1>
+          <span className="px-2 py-0.5 rounded-md text-xs font-mono font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30 self-start mt-1">
+            v18.0
+          </span>
+        </div>
 
         {/* Pure Central Search & Address Box */}
         <form onSubmit={handleSearchSubmit} className="w-full mb-6">

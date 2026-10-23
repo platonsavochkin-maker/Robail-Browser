@@ -104,7 +104,7 @@ export const OmegaAssistant: React.FC<OmegaAssistantProps> = ({
     {
       id: 'welcome',
       sender: 'assistant',
-      text: 'Здравствуйте! Я Омега — полноценный искусственный интеллект в браузере Robail. 🧠✨\n\nВы можете спросить меня буквально обо всём на свете: о науке, космосе, истории, программировании, попросить объяснить сложную тему, написать стих, рассказать шутку, открыть YouTube или рассказать историю браузера. Нажмите на микрофон внизу или напишите любой вопрос!',
+      text: 'Здравствуйте! Я Омега — новейший искусственный интеллект версии 8.0 в браузере Robail 18.0. 🧠✨\n\nВы можете спросить меня буквально обо всём на свете: о науке, играх, Roblox, программировании, попросить объяснить сложную тему, рассказать шутку, открыть YouTube, Steam или запустить лаунчер без Microsoft Store. Нажмите на микрофон или напишите вопрос!',
       timestamp: Date.now(),
     },
   ]);
@@ -371,13 +371,13 @@ export const OmegaAssistant: React.FC<OmegaAssistantProps> = ({
       lower.includes('версия') ||
       lower.includes('version')
     ) {
-      const spokenReply = 'Я работаю на версии 6.0, а Браузер работает на версии 16.0.';
+      const spokenReply = 'Я работаю на самой новой версии 8.0, а Браузер работает на версии 18.0.';
       setMessages((prev) => [
         ...prev,
         {
           id: 'ai-ver-' + Date.now(),
           sender: 'assistant',
-          text: `ℹ️ **Информация о версиях системы:**\n\n• **ИИ Омега**: работает на версии **6.0**\n• **Браузер Robail**: работает на версии **16.0**`,
+          text: `ℹ️ **Информация о версиях системы:**\n\n• **ИИ Омега**: работает на самой новой версии **8.0** 🚀\n• **Браузер Robail**: работает на версии **18.0**`,
           timestamp: Date.now(),
         },
       ]);
@@ -567,6 +567,38 @@ export const OmegaAssistant: React.FC<OmegaAssistantProps> = ({
       return;
     }
 
+    // 10.5 Inquire about Roblox or Microsoft Store bypass
+    if (
+      lower.includes('roblox') ||
+      lower.includes('роблокс') ||
+      lower.includes('microsoft store') ||
+      lower.includes('майкрософт стор') ||
+      lower.includes('докачать') ||
+      lower.includes('не могу установить')
+    ) {
+      const reply =
+        '🎮 **Как играть и запускать без Microsoft Store:**\n\n' +
+        '1. **Официальный автономный Roblox Win32:**\n' +
+        'Microsoft Store часто выдаёт ошибки и блокирует запуск. Скачивайте установщик напрямую с официального сервера Roblox (setup.rbxcdn.com) — он устанавливается напрямую на диск без Microsoft Store!\n\n' +
+        '2. **Прямой лаунчер Robail & Омега:**\n' +
+        'Запустите установщик `.CMD` из окна браузера. Он не обращается к Microsoft Store, сразу создаёт ярлык на рабочем столе и мгновенно открывает браузер с активной Омегой v8.0!';
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: 'ai-roblox-' + Date.now(),
+          sender: 'assistant',
+          text: reply,
+          link: 'https://setup.rbxcdn.com/RobloxPlayerInstaller.exe',
+          linkTitle: 'Скачать Roblox Standalone (Без Microsoft Store)',
+          timestamp: Date.now(),
+        },
+      ]);
+      speakResponse('Не переживайте насчёт Microsoft Store! Я прикрепила прямую официальную ссылку на автономный установщик Roblox, который работает напрямую в обход магазина.');
+      setIsLoading(false);
+      return;
+    }
+
     // 11. Who are you (Omega)
     if (
       lower.includes('кто ты') ||
@@ -575,7 +607,7 @@ export const OmegaAssistant: React.FC<OmegaAssistantProps> = ({
       lower.includes('ты кто')
     ) {
       const reply =
-        'Я ваш персональный голосовой ИИ-ассистент Омега. 🌟\n\nЯ умею:\n• Мгновенно открывать YouTube, Steam или любой другой сайт\n• Знаю историю создания браузера и версии (Омега 6.0, Браузер 16.0)\n• Рассказывать шутки и интересные научные факты\n• Подсказывать погоду в любом городе мира\n• Давать ссылки и отвечать на любые ваши вопросы голосом и текстом!';
+        'Я ваш персональный голосовой ИИ-ассистент Омега новейшей версии 8.0. 🌟\n\nЯ умею:\n• Мгновенно открывать YouTube, Steam, Roblox или любой другой сайт\n• Знаю историю создания браузера и версии (Омега 8.0, Браузер 18.0)\n• Помогать запускать программы без ограничений Microsoft Store\n• Рассказывать шутки и интересные научные факты\n• Подсказывать погоду в любом городе мира\n• Давать ссылки и отвечать на любые ваши вопросы голосом и текстом!';
       setMessages((prev) => [
         ...prev,
         {
@@ -585,7 +617,7 @@ export const OmegaAssistant: React.FC<OmegaAssistantProps> = ({
           timestamp: Date.now(),
         },
       ]);
-      speakResponse('Я ваш персональный ИИ-ассистент Омега. Могу открыть YouTube, Steam, рассказать историю браузера, назвать версии, пошутить или ответить на любые вопросы!');
+      speakResponse('Я ваш персональный ИИ-ассистент Омега самой новой версии 8.0. Могу открыть любой сайт, помочь обойти проблемы с установщиками, пошутить или ответить на любые вопросы!');
       setIsLoading(false);
       return;
     }
@@ -707,7 +739,7 @@ export const OmegaAssistant: React.FC<OmegaAssistantProps> = ({
             <div className="flex items-center gap-1.5">
               <h3 className="font-bold text-sm text-white">Омега</h3>
               <span className="px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                v6.0
+                v8.0
               </span>
             </div>
             <p className="text-[10px] text-slate-400">
@@ -813,7 +845,7 @@ export const OmegaAssistant: React.FC<OmegaAssistantProps> = ({
           className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-800 hover:bg-indigo-600/30 hover:border-indigo-500/40 border border-slate-700 text-slate-300 hover:text-white whitespace-nowrap transition-colors cursor-pointer"
         >
           <Info className="w-3 h-3 text-indigo-400" />
-          <span>Версии (6.0 / 16.0) 🔢</span>
+          <span>Версии (8.0 / 18.0) 🔢</span>
         </button>
 
         <button

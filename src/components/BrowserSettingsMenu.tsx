@@ -12,7 +12,9 @@ import {
   BookOpen,
   ChevronDown,
   ChevronUp,
-  Volume2,
+  Download,
+  CheckCircle2,
+  RotateCcw,
 } from 'lucide-react';
 
 interface BrowserSettingsMenuProps {
@@ -24,6 +26,9 @@ interface BrowserSettingsMenuProps {
   onToggleAssistant: (enabled: boolean) => void;
   onOpenQuarantine?: () => void;
   onClearData?: () => void;
+  isInstalled?: boolean;
+  onOpenInstall?: () => void;
+  onResetInstall?: () => void;
 }
 
 export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
@@ -35,6 +40,9 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
   onToggleAssistant,
   onOpenQuarantine,
   onClearData,
+  isInstalled = false,
+  onOpenInstall,
+  onResetInstall,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showStory, setShowStory] = useState(false);
@@ -111,14 +119,14 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
                 isLight ? 'text-slate-500' : 'text-slate-400'
               }`}
             >
-              Robail Browser v16.0
+              Robail Browser v18.0
             </span>
           </div>
         </div>
 
         <button
           onClick={onClose}
-          className={`p-1.5 rounded-lg transition-colors ${
+          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
             isLight
               ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-200/70'
               : 'text-slate-400 hover:text-white hover:bg-slate-800'
@@ -159,7 +167,7 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
             <button
               type="button"
               onClick={() => onToggleTheme('dark')}
-              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 !isLight
                   ? 'bg-slate-850 text-white shadow-md border border-slate-700 ring-1 ring-amber-400/40'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
@@ -174,7 +182,7 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
             <button
               type="button"
               onClick={() => onToggleTheme('light')}
-              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 isLight
                   ? 'bg-white text-slate-900 shadow-md border border-slate-300 ring-1 ring-amber-500/40'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
@@ -222,7 +230,7 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
                         : 'bg-slate-700/40 text-slate-400 border-slate-600/30'
                     }`}
                   >
-                    v6.0
+                    v8.0
                   </span>
                 </div>
                 <p
@@ -269,7 +277,71 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
           </div>
         </div>
 
-        {/* 3. System Versions & Browser Origin Story */}
+        {/* 3. EXE Installation Status */}
+        <div
+          className={`p-3 rounded-xl border ${
+            isLight
+              ? 'bg-slate-50 border-slate-200 text-slate-700'
+              : 'bg-slate-950/70 border-slate-800 text-slate-300'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Download className="w-3.5 h-3.5 text-amber-500" />
+              <span>Версия приложения</span>
+            </span>
+            <span
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                isInstalled
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-amber-500/20 text-amber-500 border border-amber-500/30'
+              }`}
+            >
+              {isInstalled ? 'Установлен v18.0' : 'Доступно обновление v18.0'}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {isInstalled ? (
+              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-500">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <span>Браузер Robail v18.0 установлен на ПК</span>
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-400">
+                Автономная версия браузера для Windows 10/11 с нативной поддержкой:
+              </p>
+            )}
+
+            {/* Always provide direct download / reinstall action so user is never locked out */}
+            {onOpenInstall && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenInstall();
+                }}
+                className="w-full py-1.5 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>{isInstalled ? 'Скачать установщик v18.0 снова' : 'Установить Robail .EXE v18.0'}</span>
+              </button>
+            )}
+
+            {isInstalled && onResetInstall && (
+              <button
+                type="button"
+                onClick={onResetInstall}
+                className="text-[10px] text-slate-500 hover:text-amber-400 underline flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-2.5 h-2.5" />
+                <span>Сбросить статус установки</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 4. System Versions & Browser Origin Story */}
         <div
           className={`p-3 rounded-xl border ${
             isLight
@@ -287,11 +359,11 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
           <div className="space-y-1 text-xs font-mono">
             <div className="flex items-center justify-between py-1 border-b border-dashed border-slate-300/40 dark:border-slate-800">
               <span className="text-slate-500 font-sans">Браузер:</span>
-              <span className="font-bold text-amber-500 font-mono">Robail v16.0</span>
+              <span className="font-bold text-amber-500 font-mono">Robail v18.0</span>
             </div>
             <div className="flex items-center justify-between py-1">
               <span className="text-slate-500 font-sans">ИИ-ассистент:</span>
-              <span className="font-bold text-purple-400 font-mono">Омега v6.0</span>
+              <span className="font-bold text-purple-400 font-mono">Омега v8.0</span>
             </div>
           </div>
 
@@ -299,7 +371,7 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
           <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-800">
             <button
               onClick={() => setShowStory(!showStory)}
-              className={`w-full py-1.5 px-2.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
+              className={`w-full py-1.5 px-2.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 isLight
                   ? 'bg-amber-100/60 hover:bg-amber-100 text-amber-900'
                   : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
@@ -328,7 +400,7 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
           </div>
         </div>
 
-        {/* 4. Quick Actions */}
+        {/* 5. Quick Actions */}
         <div className="space-y-1.5 pt-1">
           {onOpenQuarantine && (
             <button
@@ -337,7 +409,7 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
                 onClose();
                 onOpenQuarantine();
               }}
-              className={`w-full py-2 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors border ${
+              className={`w-full py-2 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors border cursor-pointer ${
                 isLight
                   ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                   : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-750'
@@ -351,7 +423,7 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
           <button
             type="button"
             onClick={handleClear}
-            className={`w-full py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors border ${
+            className={`w-full py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors border cursor-pointer ${
               isLight
                 ? 'bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-slate-700 border-slate-200'
                 : 'bg-slate-800/80 hover:bg-rose-950/40 hover:text-rose-300 hover:border-rose-800/50 text-slate-300 border-slate-750'

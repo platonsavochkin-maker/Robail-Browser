@@ -3,12 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Robail Browser</title>
-    <meta name="description" content="High-performance, futuristic web browser with intelligent AI copilot, multi-tab management, live web proxy, developer tools, and rich built-in web apps." />
-    <meta property="og:title" content="Robail Browser" />
-    <meta property="og:description" content="High-performance, futuristic web browser with intelligent AI copilot, multi-tab management, live web proxy, developer tools, and rich built-in web apps." />
+    <title>Robail Browser v18.0</title>
+    <meta name="description" content="Robail Browser v18.0 with intelligent Omega AI assistant, live web proxy, YouTube Turbo, and Robail Shield security." />
+    <meta property="og:title" content="Robail Browser v18.0" />
+    <meta property="og:description" content="Robail Browser v18.0 with intelligent Omega AI assistant, live web proxy, YouTube Turbo, and Robail Shield security." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Suppress Vite HMR WebSocket connection errors as per environment constraints
+      window.addEventListener('error', function (event) {
+        if (
+          event &&
+          (event.message?.includes('WebSocket') ||
+            event.message?.includes('createWebSocketModuleRunnerTransport') ||
+            event.filename?.includes('@vite/client'))
+        ) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      });
+      window.addEventListener('unhandledrejection', function (event) {
+        if (
+          event &&
+          (String(event.reason).includes('WebSocket') ||
+            String(event.reason?.stack).includes('@vite/client') ||
+            String(event.reason?.message).includes('createWebSocketModuleRunnerTransport'))
+        ) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
