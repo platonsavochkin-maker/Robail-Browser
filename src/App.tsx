@@ -26,6 +26,9 @@ import { StartPage } from './components/StartPage';
 import { YouTubeView } from './components/sites/YouTubeView';
 import { ArcadeGames } from './components/ArcadeGames';
 import { InstallModal } from './components/InstallModal';
+import { GamingBar } from './components/GamingBar';
+import { RabadailStoreModal } from './components/RabadailStoreModal';
+import { UBlockOriginPopup } from './components/UBlockOriginPopup';
 
 export default function App() {
   const [quarantinedDomains, setQuarantinedDomains] = useState<string[]>(() => {
@@ -63,11 +66,40 @@ export default function App() {
     }
   });
   const [showInstallModal, setShowInstallModal] = useState(false);
+  const [autoPrompted, setAutoPrompted] = useState(false);
+
+  // Automatically prompt user to install as browser app when entering the browser link
+  useEffect(() => {
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+
+    const sessionDismissed = sessionStorage.getItem('robail_install_prompt_dismissed');
+
+    if (!isStandalone && sessionDismissed !== 'true') {
+      const timer = setTimeout(() => {
+        setAutoPrompted(true);
+        setShowInstallModal(true);
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleCloseInstallModal = () => {
+    setShowInstallModal(false);
+    setAutoPrompted(false);
+    try {
+      sessionStorage.setItem('robail_install_prompt_dismissed', 'true');
+    } catch {}
+  };
 
   const handleInstallComplete = () => {
     setIsInstalled(true);
+    setShowInstallModal(false);
+    setAutoPrompted(false);
     try {
       localStorage.setItem('robail_is_installed_v18', 'true');
+      sessionStorage.setItem('robail_install_prompt_dismissed', 'true');
     } catch {}
   };
 
@@ -78,6 +110,102 @@ export default function App() {
       localStorage.removeItem('robail_is_installed');
     } catch {}
   };
+
+  // Robail Shield AdBlock State & Handlers
+  const [uBlockInstalled, setUBlockInstalled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('rabadail_ublock_installed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [uBlockEnabled, setUBlockEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('rabadail_ublock_enabled');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const [isUBlockPopupOpen, setIsUBlockPopupOpen] = useState(false);
+  const [uBlockPageBlocked, setUBlockPageBlocked] = useState(0);
+  const [uBlockTotalBlocked, setUBlockTotalBlocked] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('rabadail_ublock_total_blocked');
+      return saved ? parseInt(saved, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  const handleToggleUBlockInstall = (installed: boolean) => {
+    setUBlockInstalled(installed);
+    try {
+      localStorage.setItem('rabadail_ublock_installed', String(installed));
+    } catch {}
+    if (!installed) {
+      setIsUBlockPopupOpen(false);
+    }
+  };
+
+  const handleToggleUBlockEnabled = (enabled: boolean) => {
+    setUBlockEnabled(enabled);
+    try {
+      localStorage.setItem('rabadail_ublock_enabled', String(enabled));
+    } catch {}
+  };
+
+  // Robail SponsorBlock Extension State & Handlers
+  const [sponsorBlockInstalled, setSponsorBlockInstalled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('robail_sponsorblock_installed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleSponsorBlockInstall = (installed: boolean) => {
+    setSponsorBlockInstalled(installed);
+    try {
+      localStorage.setItem('robail_sponsorblock_installed', String(installed));
+    } catch {}
+  };
+
+  // Rabadail Gaming Mod State & Handlers
+  const [gamingModActive, setGamingModActive] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('rabadail_gaming_mod') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [gamingColor, setGamingColor] = useState<string>(() => {
+    try {
+      return localStorage.getItem('rabadail_gaming_color') || '#ff003c';
+    } catch {
+      return '#ff003c';
+    }
+  });
+
+  const handleToggleGamingMod = (active: boolean) => {
+    setGamingModActive(active);
+    try {
+      localStorage.setItem('rabadail_gaming_mod', String(active));
+    } catch {}
+  };
+
+  const handleChangeGamingColor = (color: string) => {
+    setGamingColor(color);
+    try {
+      localStorage.setItem('rabadail_gaming_color', color);
+    } catch {}
+  };
+
+  // Rabadail Store Modal State
+  const [isStoreOpen, setIsStoreOpen] = useState(false);
 
   const handleToggleTheme = (newTheme: 'dark' | 'light') => {
     setTheme(newTheme);
@@ -162,6 +290,7 @@ export default function App() {
             )
           );
         } else if (event.data.type === 'url-changed' && event.data.url) {
+          setUBlockPageBlocked(0);
           const newUrl = event.data.url;
           const security = checkDomainSecurity(newUrl, quarantinedDomains);
           setTabs((prev) =>
@@ -178,6 +307,16 @@ export default function App() {
               };
             })
           );
+        } else if (event.data.type === 'ublock-blocked' && typeof event.data.count === 'number') {
+          const count = event.data.count;
+          setUBlockPageBlocked(count);
+          setUBlockTotalBlocked((prev) => {
+            const next = prev + count;
+            try {
+              localStorage.setItem('rabadail_ublock_total_blocked', String(next));
+            } catch {}
+            return next;
+          });
         }
       }
     };
@@ -419,7 +558,11 @@ export default function App() {
   return (
     <div
       className={`w-screen h-screen flex flex-col overflow-hidden select-none font-sans relative transition-colors ${
-        theme === 'light' ? 'bg-slate-100 text-slate-800' : 'bg-slate-950 text-slate-100'
+        gamingModActive
+          ? 'rabadail-gaming-theme bg-[#07080d] text-slate-100'
+          : theme === 'light'
+          ? 'bg-slate-100 text-slate-800'
+          : 'bg-[#090d16] text-slate-100'
       }`}
     >
       {/* Top Notification Toast when a site is deleted */}
@@ -462,6 +605,8 @@ export default function App() {
         onCloseTab={handleCloseTab}
         onNewTab={handleNewTab}
         theme={theme}
+        gamingModActive={gamingModActive}
+        gamingColor={gamingColor}
       />
 
       {/* Omnibar with Site Deletion Control and Corner Lock */}
@@ -483,16 +628,39 @@ export default function App() {
         isInstalled={isInstalled}
         onOpenInstall={() => setShowInstallModal(true)}
         onResetInstall={handleResetInstall}
+        onOpenStore={() => setIsStoreOpen(true)}
+        uBlockInstalled={uBlockInstalled}
+        uBlockBlockedCount={uBlockPageBlocked}
+        onToggleUBlockPopup={() => setIsUBlockPopupOpen((prev) => !prev)}
+        isUBlockPopupOpen={isUBlockPopupOpen}
+        gamingModActive={gamingModActive}
+        gamingColor={gamingColor}
       />
+
+      {/* Rabadail Gaming Hardware Limiters & Quick Hotbar (Opera GX-inspired) */}
+      {gamingModActive && (
+        <GamingBar
+          onNavigate={handleNavigate}
+          accentColor={gamingColor}
+          theme={theme}
+        />
+      )}
 
       {/* Main Browser Canvas */}
       <div
         className={`flex-1 w-full h-full relative overflow-hidden flex flex-col transition-colors ${
-          theme === 'light' ? 'bg-slate-100' : 'bg-slate-900'
+          gamingModActive ? 'bg-[#08090e]' : theme === 'light' ? 'bg-slate-100' : 'bg-[#090d16]'
         }`}
       >
         {activeTab.mode === 'start' ? (
-          <StartPage onNavigate={handleNavigate} theme={theme} />
+          <StartPage
+            onNavigate={handleNavigate}
+            theme={theme}
+            onOpenInstall={() => setShowInstallModal(true)}
+            isInstalled={isInstalled}
+            gamingModActive={gamingModActive}
+            gamingColor={gamingColor}
+          />
         ) : activeTab.url === 'robail://clan' || activeTab.url === 'robail://arcade' ? (
           <ArcadeGames initialGame="clan" />
         ) : isCurrentUrlBlocked ? (
@@ -539,6 +707,7 @@ export default function App() {
             <YouTubeView
               url={activeTab.url}
               onNavigate={handleNavigate}
+              sponsorBlockInstalled={sponsorBlockInstalled}
               onSwitchToWebProxy={() =>
                 setTabYouTubeModes((prev) => ({ ...prev, [activeTab.id]: 'proxy' }))
               }
@@ -576,11 +745,12 @@ export default function App() {
                 </div>
               </div>
               <iframe
-                key={activeTab.url}
-                src={`/api/proxy?url=${encodeURIComponent(activeTab.url)}`}
+                key={`${activeTab.url}-${uBlockInstalled && uBlockEnabled ? 'ublock' : 'raw'}`}
+                src={`/api/proxy?url=${encodeURIComponent(activeTab.url)}${theme === 'dark' || gamingModActive ? '&dark=1' : ''}${uBlockInstalled && uBlockEnabled ? '&ublock=1' : ''}`}
                 title={activeTab.title}
                 className="w-full flex-1 border-none"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
+                allow="camera; microphone; display-capture; autoplay; clipboard-read; clipboard-write; geolocation"
                 onLoad={() => {
                   setTabs((prev) =>
                     prev.map((t) =>
@@ -615,11 +785,12 @@ export default function App() {
               </div>
             )}
             <iframe
-              key={activeTab.url}
-              src={`/api/proxy?url=${encodeURIComponent(activeTab.url)}`}
+              key={`${activeTab.url}-${uBlockInstalled && uBlockEnabled ? 'ublock' : 'raw'}`}
+              src={`/api/proxy?url=${encodeURIComponent(activeTab.url)}${theme === 'dark' || gamingModActive ? '&dark=1' : ''}${uBlockInstalled && uBlockEnabled ? '&ublock=1' : ''}`}
               title={activeTab.title}
               className="w-full flex-1 border-none"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
+              allow="camera; microphone; display-capture; autoplay; clipboard-read; clipboard-write; geolocation"
               onLoad={() => {
                 setTabs((prev) =>
                   prev.map((t) =>
@@ -740,12 +911,42 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* Robail Browser Windows .EXE Installation Modal */}
+      {/* Robail Browser Windows Application & PWA Installation Modal */}
       <InstallModal
         isOpen={showInstallModal}
-        onClose={() => setShowInstallModal(false)}
+        onClose={handleCloseInstallModal}
         onInstallComplete={handleInstallComplete}
         isInstalled={isInstalled}
+        theme={theme}
+        autoPrompted={autoPrompted}
+        gamingModActive={gamingModActive}
+      />
+
+      {/* Robail Shield Extension Popup */}
+      <UBlockOriginPopup
+        isOpen={isUBlockPopupOpen && uBlockInstalled}
+        onClose={() => setIsUBlockPopupOpen(false)}
+        isEnabled={uBlockEnabled}
+        onToggleEnabled={handleToggleUBlockEnabled}
+        blockedCount={uBlockPageBlocked}
+        totalBlockedCount={uBlockTotalBlocked}
+        currentHost={activeTab.security?.hostname || 'robail://start'}
+        theme={theme}
+        isGamingTheme={gamingModActive}
+      />
+
+      {/* Rabadail Store Modal (Catalog for Extensions & Mods) */}
+      <RabadailStoreModal
+        isOpen={isStoreOpen}
+        onClose={() => setIsStoreOpen(false)}
+        uBlockInstalled={uBlockInstalled}
+        onToggleUBlockInstall={handleToggleUBlockInstall}
+        sponsorBlockInstalled={sponsorBlockInstalled}
+        onToggleSponsorBlockInstall={handleToggleSponsorBlockInstall}
+        gamingModActive={gamingModActive}
+        onToggleGamingMod={handleToggleGamingMod}
+        gamingColor={gamingColor}
+        onChangeGamingColor={handleChangeGamingColor}
         theme={theme}
       />
     </div>

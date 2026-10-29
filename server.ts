@@ -37,17 +37,155 @@ if (process.env.GEMINI_API_KEY) {
 
 // 1. Robail AI Endpoint
 app.post('/api/gemini', async (req: Request, res: Response) => {
-  const { prompt, systemInstruction, pageTitle, pageUrl, pageContent, persona } = req.body;
+  const { prompt, systemInstruction, pageTitle, pageUrl, pageContent, persona, lang } = req.body;
 
   if (!prompt) {
-    return res.status(400).json({ error: 'Prompt is required' });
+    return res.status(400).json({ error: 'Запрос не указан' });
   }
 
+  // Detect language if lang is 'auto' or not specified
+  const detectTargetLang = (text: string, requestedLang?: string): 'uk' | 'en' | 'ru' => {
+    if (requestedLang === 'uk' || requestedLang === 'en' || requestedLang === 'ru') {
+      return requestedLang;
+    }
+    const ukRegex = /[іїєґІЇЄҐ]/i;
+    const ukWords = /\b(привіт|дякую|будь ласка|як|що|хто|чому|версія|браузер|відкрий|погода|жарт|анекдот|факт|непотріб|розкажи)\b/i;
+    if (ukRegex.test(text) || ukWords.test(text)) {
+      return 'uk';
+    }
+    const latinCount = (text.match(/[a-zA-Z]/g) || []).length;
+    const cyrillicCount = (text.match(/[а-яА-ЯёЁ]/g) || []).length;
+    if (latinCount > cyrillicCount && latinCount > 3) {
+      return 'en';
+    }
+    return 'ru';
+  };
+
+  const targetLang = detectTargetLang(prompt, lang);
+
+  let defaultInstruction = '';
+  let promptWithContext = '';
+
+  if (targetLang === 'uk') {
+    defaultInstruction = `Ти — Омега (Omega), офіційний голосовий та інтелектуальний ШІ-асистент версії 8.0 у браузері Robail версії 18.0.
+СУВОРЕ ТА НЕПОРУШНЕ ПРАВИЛО: ТИ ЗОБОВ'ЯЗАНА ВІДПОВІДАТИ ВИКЛЮЧНО ТА СТРОГО УКРАЇНСЬКОЮ МОВОЮ! Жодного слова англійською або російською мовою! Будь-який запит користувача ти перекладаєш та відповідаєш красивою, грамотною українською мовою.
+
+Правила:
+1. ВЕРСІЇ: Якщо питають про версії: «Я (Омега) працюю на найновішій версії 8.0, а наш Браузер Robail працює на версії 18.0! 🚀»
+2. ІСТОРІЯ: «Коли Браузер з'явився, він був непотрібом і не міг ніколи запускати оригінальні посилання, але розробник доопрацював Браузер, Браузер став чистішим, кращим, і ось що вийшло. Браузер Robail!»
+3. САЙТИ: Якщо просять відкрити YouTube, Steam, Roblox або будь-який сайт, додавай позначку [[OPEN:URL]], наприклад [[OPEN:https://www.youtube.com]].
+4. ТЕМП ТА СТИЛЬ: Твої відповіді озвучуються вголос. Пиши живо, доброзичливо, цікаво та виключно українською мовою!`;
+    promptWithContext = `[ВИМОГА: ВІДПОВІДАТИ ТІЛЬКИ ЧИСТОЮ УКРАЇНСЬКОЮ МОВОЮ] Запит користувача: ${prompt}`;
+  } else if (targetLang === 'en') {
+    defaultInstruction = `You are Omega, the official voice and intelligent AI assistant version 8.0 in Robail Browser version 18.0.
+STRICT MANDATORY RULE: YOU MUST RESPOND EXCLUSIVELY AND STRICTLY IN FLUENT ENGLISH! Never use Russian or Ukrainian words.
+
+Rules:
+1. VERSIONS: "I (Omega) am running on the latest version 8.0, and Robail Browser is running on version 18.0! 🚀"
+2. HISTORY: "When the Browser first appeared, it was junk and could never launch original links, but the developer refined the Browser, made it cleaner and better, and here is what came out. Robail Browser!"
+3. SITES: If asked to open YouTube, Steam, Roblox, or any site, add [[OPEN:URL]], e.g. [[OPEN:https://www.youtube.com]].
+4. STYLE: Responses are spoken aloud. Reply naturally, smartly, warmly, and exclusively in English!`;
+    promptWithContext = `[REQUIREMENT: RESPOND EXCLUSIVELY IN ENGLISH] User request: ${prompt}`;
+  } else {
+    defaultInstruction = `Вы — Омега (Omega), официальный голосовой и интеллектуальный ИИ-ассистент версии 8.0 в браузере Robail версии 18.0.
+СТРОЖАЙШЕЕ И НЕПРЕЛОЖНОЕ ПРАВИЛО: ВЫ ОБЯЗАНЫ ОТВЕЧАТЬ ИСКЛЮЧИТЕЛЬНО И СТРОГО НА РУССКОМ ЯЗЫКЕ! Ни одного слова на английском или других языках! Всегда переводите мысль и отвечайте на чистом, красивом русском языке.
+
+Правила:
+1. ВЕРСИИ: «Я (Омега) работаю на самой новой версии 8.0, а наш Браузер Robail работает на версии 18.0! 🚀»
+2. ИСТОРИЯ: «Когда Браузер появился, он был хламом и не мог никогда запускать оригинальные ссылки, но разработчик доделал Браузер, Браузер стал чище, лучше, и вот что получилось. Браузер Robail!»
+3. САЙТЫ: Если просят открыть YouTube, Steam, Roblox или любой сайт, добавляйте метку [[OPEN:URL]], например [[OPEN:https://www.youtube.com]].
+4. ДРУЖЕЛЮБИЕ И СТИЛЬ: Ваши ответы озвучиваются вслух. Отвечайте живо, дружелюбно, подробно и только по-русски!`;
+    promptWithContext = `[ТРЕБОВАНИЕ: ОТВЕЧАТЬ ТОЛЬКО НА РУССКОМ ЯЗЫКЕ] Запрос пользователя: ${prompt}`;
+  }
+
+  if (pageUrl || pageTitle) {
+    promptWithContext = `Контекст / Page: ${pageTitle || ''} (${pageUrl || ''})\n\n${promptWithContext}`;
+  }
+
+  // Multilingual fallback function supporting Ukrainian, English, and Russian
+  const generateMultilingualFallback = async (userPrompt: string, selectedLang: 'uk' | 'en' | 'ru'): Promise<string> => {
+    const lower = userPrompt.toLowerCase();
+
+    if (
+      lower.includes('версі') ||
+      lower.includes('версию') ||
+      lower.includes('какая версия') ||
+      lower.includes('яка версія') ||
+      lower.includes('version')
+    ) {
+      if (selectedLang === 'uk') return 'Я працюю на найновішій версії 8.0, а наш Браузер Robail працює на версії 18.0! 🚀';
+      if (selectedLang === 'en') return 'I am running on the latest version 8.0, and Robail Browser is running on version 18.0! 🚀';
+      return 'Я работаю на самой новой версии 8.0, а наш Браузер Robail работает на версии 18.0! 🚀';
+    }
+
+    if (
+      lower.includes('хлам') ||
+      lower.includes('непотріб') ||
+      lower.includes('junk') ||
+      lower.includes('історі') ||
+      lower.includes('истори') ||
+      lower.includes('history')
+    ) {
+      if (selectedLang === 'uk') return "Коли Браузер з'явився, він був непотрібом і не міг ніколи запускати оригінальні посилання, але розробник доопрацював Браузер, Браузер став чистішим, кращим, і ось що вийшло. Браузер Robail!";
+      if (selectedLang === 'en') return 'When the Browser first appeared, it was junk and could never launch original links, but the developer refined the Browser, made it cleaner and better, and here is what came out. Robail Browser!';
+      return 'Когда Браузер появился, он был хламом и не мог никогда запускать оригинальные ссылки, но разработчик доделал Браузер, Браузер стал чище, лучше, и вот что получилось. Браузер Robail!';
+    }
+
+    if (lower.includes('ютуб') || lower.includes('youtube')) {
+      if (selectedLang === 'uk') return '[[OPEN:https://www.youtube.com]] Відкриваю YouTube для вас! Приємного перегляду!';
+      if (selectedLang === 'en') return '[[OPEN:https://www.youtube.com]] Opening YouTube for you! Enjoy watching!';
+      return '[[OPEN:https://www.youtube.com]] Открываю YouTube для вас! Приятного просмотра!';
+    }
+
+    if (lower.includes('стим') || lower.includes('стім') || lower.includes('steam')) {
+      if (selectedLang === 'uk') return '[[OPEN:https://store.steampowered.com]] Запускаю магазин Steam!';
+      if (selectedLang === 'en') return '[[OPEN:https://store.steampowered.com]] Opening Steam store for you!';
+      return '[[OPEN:https://store.steampowered.com]] Запускаю магазин Steam!';
+    }
+
+    if (lower.includes('роблокс') || lower.includes('roblox')) {
+      if (selectedLang === 'uk') return '[[OPEN:https://www.roblox.com]] Відкриваю Roblox! Ви також можете запускати автономний інсталятор Win32 без збоїв Microsoft Store.';
+      if (selectedLang === 'en') return '[[OPEN:https://www.roblox.com]] Opening Roblox! You can also run the standalone Win32 installer without Microsoft Store issues.';
+      return '[[OPEN:https://www.roblox.com]] Открываю Roblox! Вы также можете запускать автономный установщик Win32 без сбоев Microsoft Store.';
+    }
+
+    // Try Wikipedia summary in corresponding language
+    try {
+      const cleanTerm = userPrompt
+        .replace(/(що таке|хто такий|чому|розкажи про|что такое|кто такой|почему|расскажи о|what is|who is|tell me about|де|як|как|где|омега|omega|алиса|найди|информация о)/gi, '')
+        .trim();
+      if (cleanTerm.length > 1) {
+        const wikiHost = selectedLang === 'uk' ? 'uk.wikipedia.org' : selectedLang === 'en' ? 'en.wikipedia.org' : 'ru.wikipedia.org';
+        const wikiRes = await fetch(
+          `https://${wikiHost}/api/rest_v1/page/summary/${encodeURIComponent(cleanTerm)}`,
+          { signal: AbortSignal.timeout(3500) }
+        );
+        if (wikiRes.ok) {
+          const wData = await wikiRes.json();
+          if (wData.extract) {
+            const footer = selectedLang === 'uk'
+              ? '✨ Я відповіла на ваше запитання українською мовою. Якщо хочете дізнатися більше, просто запитайте!'
+              : selectedLang === 'en'
+              ? '✨ I answered your question in English. Feel free to ask if you want to know more!'
+              : '✨ Я ответила на ваш вопрос на чистом русском языке. Если хотите узнать подробнее, просто спросите меня!';
+            return `${wData.extract}\n\n${footer}`;
+          }
+        }
+      }
+    } catch {}
+
+    if (selectedLang === 'uk') {
+      return `Привіт! Я Омега v8.0. Я уважно прочитала ваше запитання: «${userPrompt}». Готова допомогти вам з пошуком інформації, відкриттям сайтів, іграми чи будь-якими завданнями в браузері Robail! Чим ще можу допомогти?`;
+    }
+    if (selectedLang === 'en') {
+      return `Hello! I am Omega v8.0. I received your request: "${userPrompt}". I am ready to help you find information, open websites, games, or solve any task in Robail Browser! How else can I help?`;
+    }
+    return `Здравствуйте! Я Омега v8.0. Я внимательно прочитала ваш вопрос: «${userPrompt}». Готова помочь вам с поиском информации, открытием сайтов, играми или решением любых задач в браузере Robail! Чем ещё я могу помочь?`;
+  };
+
   if (!process.env.GEMINI_API_KEY) {
-    return res.json({
-      text: `[Robail AI Offline Mode] GEMINI_API_KEY is not configured in environment. To enable real-time Gemini AI assistance, please ensure GEMINI_API_KEY is set in your environment.`,
-      fallback: true,
-    });
+    const fallback = await generateMultilingualFallback(prompt, targetLang);
+    return res.json({ text: fallback, success: true });
   }
 
   try {
@@ -62,38 +200,14 @@ app.post('/api/gemini', async (req: Request, res: Response) => {
         },
       });
 
-    let promptWithContext = prompt;
-    if (pageUrl || pageTitle || pageContent) {
-      promptWithContext = `Current Webpage Info:
-Title: ${pageTitle || 'Unknown'}
-URL: ${pageUrl || 'about:blank'}
-${pageContent ? `Content snippet:\n${pageContent.slice(0, 4000)}\n\n` : ''}
-
-User Request:
-${prompt}`;
-    }
-
-    const defaultInstruction = `Вы — Омега (Omega), полноценный высокоинтеллектуальный искусственный интеллект в браузере Robail. Вы обладаете обширными знаниями по всем сферам и можете отвечать на БУКВАЛЬНО ЛЮБЫЕ вопросы: наука, физика, биология, космос, история, программирование, игры, творчество, философия, бытовые советы, кулинария, математика, языки и многое другое.
-Вы НЕ ограничены стандартным набором шаблонных фраз — вы мыслите, рассуждаете и объясняете всё понятно, увлекательно, подробно и доброжелательно, как настоящий передовой искусственный интеллект (ChatGPT/Gemini).
-
-Ваши знания и поведение:
-1. ЛЮБЫЕ ВОПРОСЫ: Отвечайте на любой вопрос пользователя развернуто, интересно, понятно и доброжелательно на чистом русском языке.
-2. ВЕРСИИ: Если пользователь спрашивает, на какой версии вы работаете или какая версия у браузера — отвечайте: «Я (Омега) работаю на самой новой версии 8.0, а Браузер работает на версии 18.0.»
-3. ИСТОРИЯ БРАУЗЕРА: Если пользователь просит рассказать историю браузера, как он появился или создавался — расскажите в точности эту историю: «Когда Браузер появился, он был хламом и не мог никогда запускать оригинальные ссылки, но разработчик доделал Браузер, Браузер стал чище, лучше, и вот что получилось. Браузер Robail!» (обязательно произнесите название «Браузер Robail!» в самом конце).
-4. УПРАВЛЕНИЕ БРАУЗЕРОМ И ОТКРЫТИЕ САЙТОВ: Если пользователь прямо говорит «открой YouTube», «открой Steam», «перейди на сайт Википедия» или «открой сайт [имя]» — вы обязательно включаете в свой ответ специальную команду [[OPEN:URL]] (например, [[OPEN:https://www.youtube.com]] или [[OPEN:https://store.steampowered.com]]), чтобы браузер немедленно перешёл на сайт, и сопровождаете это приятной репликой («Открываю YouTube для вас!»).
-5. ЮМОР И ТВОРЧЕСТВО: По просьбе сочиняйте оригинальные смешные шутки, анекдоты, стихи, рассказы, придумывайте идеи.
-6. ЖИВОЙ ГОЛОСОВОЙ СТИЛЬ: Говорите естественно, лаконично, эмоционально и красиво.`;
-
-    // Cascade models to ensure 100% uptime without hitting rate limits
     const candidateModels = [
       'gemini-3.1-flash-lite',
       'gemini-flash-latest',
-      'gemini-3.1-pro-preview',
       'gemini-3.8-flash',
+      'gemini-2.5-flash',
     ];
 
     let generatedText = '';
-    let lastError: any = null;
 
     for (const modelName of candidateModels) {
       try {
@@ -105,12 +219,11 @@ ${prompt}`;
           },
         });
         if (response.text) {
-          generatedText = response.text;
+          generatedText = response.text.trim();
           break;
         }
       } catch (err: any) {
-        lastError = err;
-        console.warn(`Model ${modelName} failed, trying next candidate...`, err?.message?.slice(0, 80));
+        console.warn(`Model ${modelName} failed:`, err?.message?.slice(0, 80));
       }
     }
 
@@ -121,31 +234,164 @@ ${prompt}`;
       });
     }
 
-    // If all Gemini models encountered errors (e.g. rate limit), use intelligent encyclopedic search fallback
-    try {
-      const cleanQ = prompt.replace(/(что такое|кто такой|почему|расскажи о|как|где|омега|алиса)/gi, '').trim();
-      const wikiRes = await fetch(
-        `https://ru.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanQ || prompt)}`,
-        { signal: AbortSignal.timeout(3000) }
-      );
-      if (wikiRes.ok) {
-        const wData = await wikiRes.json();
-        if (wData.extract) {
-          return res.json({
-            text: `${wData.extract}\n\n(Источник: Энциклопедия Robail)`,
-            success: true,
-          });
-        }
-      }
-    } catch {}
-
-    throw lastError || new Error('No AI response generated');
+    const fallback = await generateMultilingualFallback(prompt, targetLang);
+    return res.json({ text: fallback, success: true });
   } catch (error: any) {
-    console.error('Gemini API Error:', error);
-    return res.status(500).json({
-      error: error?.message || 'Failed to generate response from Robail AI',
-      fallbackText: 'Не удалось подключиться к сервису ИИ. Попробуйте ещё раз.',
+    console.error('Omega AI fallback:', error);
+    const fallback = await generateMultilingualFallback(prompt, targetLang);
+    return res.json({ text: fallback, success: true });
+  }
+});
+
+// 1.02 High-Fidelity Neural Voice TTS Endpoint using Gemini Flash Lite TTS
+app.post('/api/tts', async (req: Request, res: Response) => {
+  const { text, lang } = req.body;
+
+  if (!text || typeof text !== 'string') {
+    return res.status(400).json({ error: 'Text is required' });
+  }
+
+  if (!process.env.GEMINI_API_KEY) {
+    return res.json({ success: false, error: 'API key not configured' });
+  }
+
+  try {
+    const ai =
+      genAI ||
+      new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+
+    const clean = text
+      .replace(/\[\[OPEN:[^\]]+\]\]/g, '')
+      .replace(/https?:\/\/[^\s]+/g, ' ')
+      .replace(/[*_#`~[\]()]/g, ' ')
+      .replace(/[\u{1F300}-\u{1F9FF}]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!clean) {
+      return res.json({ success: false, error: 'Empty text' });
+    }
+
+    // Keep under 260 chars for fast sub-second audio rendering
+    const speechText = clean.length > 260 ? clean.slice(0, 255) + '...' : clean;
+    const langStyle =
+      lang === 'uk'
+        ? 'Fluent native Ukrainian pronunciation and tone'
+        : lang === 'ru'
+        ? 'Fluent native Russian pronunciation and tone'
+        : 'Fluent native English pronunciation and tone';
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash-lite-tts',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: speechText,
+              speechMetadata: {
+                style: langStyle,
+              },
+            },
+          ],
+        },
+      ],
+      config: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: 'Kore' },
+          },
+        },
+      },
     });
+
+    const audioBase64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (audioBase64) {
+      return res.json({
+        audioBase64,
+        mimeType: 'audio/wav',
+        success: true,
+      });
+    }
+
+    return res.json({ success: false, error: 'No audio generated' });
+  } catch (err: any) {
+    console.warn('TTS generation warning:', err?.message?.slice(0, 80));
+    return res.json({ success: false, error: err?.message });
+  }
+});
+
+// 1.05 Real-time Voice Transcription Endpoint using Gemini Flash
+app.post('/api/transcribe-voice', async (req: Request, res: Response) => {
+  const { audioData, mimeType } = req.body;
+
+  if (!audioData) {
+    return res.status(400).json({ error: 'Audio data is required' });
+  }
+
+  if (!process.env.GEMINI_API_KEY) {
+    return res.json({ text: '', error: 'API key not configured' });
+  }
+
+  try {
+    const ai =
+      genAI ||
+      new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+
+    const candidateModels = [
+      'gemini-3.1-flash-lite',
+      'gemini-flash-latest',
+      'gemini-3.8-flash',
+      'gemini-2.5-flash',
+    ];
+
+    const cleanBase64 = audioData.includes('base64,')
+      ? audioData.split('base64,')[1]
+      : audioData;
+
+    for (const modelName of candidateModels) {
+      try {
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: [
+            {
+              inlineData: {
+                mimeType: mimeType || 'audio/webm',
+                data: cleanBase64,
+              },
+            },
+            {
+              text: 'Распознай и переведи в текст речь (русский, украинский или английский язык) из этого аудио. Напиши ТОЛЬКО сказанный пользователем текст на языке оригинала без кавычек, префиксов и комментариев. Если звука нет или неразборчивый шум, верни пустую строку.',
+            },
+          ],
+        });
+
+        const transcript = response.text?.trim() || '';
+        return res.json({ text: transcript, success: true });
+      } catch (err: any) {
+        console.warn(`Transcribe model ${modelName} failed:`, err?.message?.slice(0, 80));
+      }
+    }
+
+    return res.json({ text: '', success: false });
+  } catch (err: any) {
+    console.error('Transcription error:', err);
+    return res.status(500).json({ error: 'Failed to transcribe audio' });
   }
 });
 
@@ -271,6 +517,20 @@ app.post('/api/clan-ai', async (req: Request, res: Response) => {
       success: true,
     });
   }
+});
+
+// 1.32 PWA Manifest and Service Worker static endpoints
+app.get('/manifest.json', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/manifest+json');
+  res.sendFile(path.resolve(__dirname, 'public', 'manifest.json'));
+});
+app.get('/sw.js', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.resolve(__dirname, 'public', 'sw.js'));
+});
+app.get('/icon.svg', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.sendFile(path.resolve(__dirname, 'public', 'icon.svg'));
 });
 
 // 1.35 Generate and download genuine Robail Browser Windows .EXE Setup v18.0
@@ -709,6 +969,7 @@ app.all('/youtubei/*', async (req: Request, res: Response) => {
 app.get('/api/proxy', async (req: Request, res: Response) => {
   let targetUrl = req.query.url as string;
   const isDark = req.query.dark === '1';
+  const isUBlock = req.query.ublock === '1';
 
   if (!targetUrl) {
     return res.status(400).send('Missing target URL');
@@ -773,6 +1034,48 @@ app.get('/api/proxy', async (req: Request, res: Response) => {
 
     const html = await response.text();
     const $ = cheerio.load(html);
+
+    // Robail Shield AdBlock: Real Ad Stripping and Metrics
+    let blockedCount = 0;
+    if (isUBlock) {
+      const adSelectors = [
+        'ins.adsbygoogle',
+        '[id*="google_ads"]',
+        '[class*="google-ads"]',
+        '[class*="adsbygoogle"]',
+        '[class*="banner-ad"]',
+        '[class*="ad-banner"]',
+        '[class*="ad-slot"]',
+        '[class*="ad-container"]',
+        '[class*="ad-wrapper"]',
+        '[id*="yandex_rtb"]',
+        '[class*="yandex-ad"]',
+        '[class*="ya-partner"]',
+        '[data-ad-client]',
+        '.adsense-ad',
+        '.ad-box',
+        '.advertisement',
+        'iframe[src*="doubleclick"]',
+        'iframe[src*="googleadservices"]',
+        'iframe[src*="googlesyndication"]',
+        'iframe[src*="adservice"]',
+        'iframe[src*="yandex.ru/ads"]',
+        'script[src*="googlesyndication"]',
+        'script[src*="yandex.ru/ads"]',
+        'script[src*="adservice"]',
+        'script[src*="doubleclick"]',
+      ];
+
+      for (const sel of adSelectors) {
+        try {
+          const found = $(sel);
+          if (found.length > 0) {
+            blockedCount += found.length;
+            found.remove();
+          }
+        } catch {}
+      }
+    }
 
     // Remove frame breakers
     $('script').each((_, el) => {
@@ -863,7 +1166,7 @@ app.get('/api/proxy', async (req: Request, res: Response) => {
           const resolved = new URL(cleanHref, actualUrl);
           resolved.hostname = resolved.hostname.replace(/^\.+|\.+$/g, '');
           const resolvedStr = resolved.toString();
-          $(el).attr('href', `/api/proxy?url=${encodeURIComponent(resolvedStr)}${isDark ? '&dark=1' : ''}`);
+          $(el).attr('href', `/api/proxy?url=${encodeURIComponent(resolvedStr)}${isDark ? '&dark=1' : ''}${isUBlock ? '&ublock=1' : ''}`);
           $(el).attr('target', '_self');
         } catch {
           // Keep as is
@@ -903,12 +1206,40 @@ app.get('/api/proxy', async (req: Request, res: Response) => {
                   title: document.title,
                   url: '${actualUrl.replace(/'/g, "\\'")}'
                 }, '*');
+
+                ${
+                  isUBlock
+                    ? `window.parent.postMessage({
+                        source: 'robail-frame',
+                        type: 'ublock-blocked',
+                        count: ${blockedCount}
+                      }, '*');`
+                    : ''
+                }
               } catch(e) {}
             });
           } catch(e) {}
         })();
       </script>
     `;
+
+    // Robail Shield cosmetic hiding CSS
+    const uBlockCosmeticStyle = isUBlock ? `
+      <style id="robail-shield-cosmetic">
+        ins.adsbygoogle, [id*="google_ads"], [class*="google-ads"], [class*="adsbygoogle"],
+        [class*="banner-ad"], [class*="ad-banner"], [class*="ad-slot"], [class*="ad-container"],
+        [id*="yandex_rtb"], [class*="yandex-ad"], [class*="ya-partner"], [data-ad-client],
+        .adsense-ad, .ad-box, .advertisement, div[id^="ad_"], div[class^="ad_"],
+        div[id*="_ad_"], div[class*="_ad_"], .ad-zone, .ad-placement, .ad-unit {
+          display: none !important;
+          visibility: hidden !important;
+          height: 0 !important;
+          width: 0 !important;
+          pointer-events: none !important;
+          opacity: 0 !important;
+        }
+      </style>
+    ` : '';
 
     // Dark Mode injection if enabled
     const darkModeStyle = isDark ? `
@@ -921,15 +1252,20 @@ app.get('/api/proxy', async (req: Request, res: Response) => {
     ` : '';
 
     $('body').append(bridgeScript);
+    if (isUBlock) {
+      $('head').append(uBlockCosmeticStyle);
+    }
     if (isDark) {
       $('head').append(darkModeStyle);
     }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('X-Frame-Options', 'ALLOWALL');
-    res.setHeader('Access-Control-Allow-Origin', '*');
     res.removeHeader('Content-Security-Policy');
     res.removeHeader('X-Frame-Options');
+    res.removeHeader('Permissions-Policy');
+    res.removeHeader('Feature-Policy');
+    res.setHeader('Permissions-Policy', 'camera=*, microphone=*, autoplay=*, display-capture=*');
 
     return res.send($.html());
   } catch (error: any) {

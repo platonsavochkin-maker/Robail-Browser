@@ -227,12 +227,14 @@ interface YouTubeViewProps {
   url?: string;
   onSwitchToWebProxy?: () => void;
   onNavigate?: (url: string) => void;
+  sponsorBlockInstalled?: boolean;
 }
 
 export const YouTubeView: React.FC<YouTubeViewProps> = ({
   url,
   onSwitchToWebProxy,
   onNavigate,
+  sponsorBlockInstalled = false,
 }) => {
   const [videos] = useState<Video[]>(INITIAL_VIDEOS);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
@@ -361,6 +363,12 @@ export const YouTubeView: React.FC<YouTubeViewProps> = ({
           <span className="text-slate-300 hidden sm:inline text-[11px]">
             Картинки, аватары, видео и Shorts GTA 5 загружаются мгновенно (0.1 сек)
           </span>
+          {sponsorBlockInstalled && (
+            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-[10px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>SponsorBlock: Пропуск вставок</span>
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -481,6 +489,19 @@ export const YouTubeView: React.FC<YouTubeViewProps> = ({
                   className="w-full h-full border-none"
                 />
               </div>
+
+              {sponsorBlockInstalled && (
+                <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="font-semibold">Robail SponsorBlock:</span>
+                    <span className="text-emerald-200/90 text-[11px]">Спонсорские интеграции и назойливые интро в ролике пропускаются</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-400 font-mono px-2 py-0.5 rounded bg-emerald-900/40 border border-emerald-500/20">
+                    Активно
+                  </span>
+                </div>
+              )}
 
               {/* Video Info Header */}
               <div>

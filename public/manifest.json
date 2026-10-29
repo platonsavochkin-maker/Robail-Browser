@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "Robail Browser v18.0",
+  "short_name": "Robail",
+  "description": "Полноценный браузер Robail v18.0 со встроенным ИИ Омега v8.0, защитой Shield и Turbo YouTube.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#020617",
+  "theme_color": "#f59e0b",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    {
+      "src": "/rbl_gx_logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/rbl_gx_logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

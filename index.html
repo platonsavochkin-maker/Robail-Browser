@@ -3,12 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Robail Browser v18.0</title>
-    <meta name="description" content="Robail Browser v18.0 with intelligent Omega AI assistant, live web proxy, YouTube Turbo, and Robail Shield security." />
-    <meta property="og:title" content="Robail Browser v18.0" />
-    <meta property="og:description" content="Robail Browser v18.0 with intelligent Omega AI assistant, live web proxy, YouTube Turbo, and Robail Shield security." />
+    <title>Robile Browser</title>
+    <meta name="description" content="Robile Browser with intelligent Omega AI assistant, live web proxy, YouTube Turbo, and Robile Shield security." />
+    <meta property="og:title" content="Robile Browser" />
+    <meta property="og:description" content="Robile Browser with intelligent Omega AI assistant, live web proxy, YouTube Turbo, and Robile Shield security." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#38bdf8" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Robile" />
+    <link rel="icon" type="image/png" href="/rbl_gx_logo.png" />
+    <link rel="apple-touch-icon" href="/rbl_gx_logo.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <script>
+      if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
     <script>
       // Suppress Vite HMR WebSocket connection errors as per environment constraints
       window.addEventListener('error', function (event) {

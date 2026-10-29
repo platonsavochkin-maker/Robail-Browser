@@ -17,6 +17,11 @@ import {
   Sparkles,
   MoreVertical,
   Download,
+  Mic,
+  Camera,
+  AppWindow,
+  ShoppingBag,
+  Shield,
 } from 'lucide-react';
 import { Tab } from '../types/browser';
 import { formatUrlForDisplay } from '../utils/browserUtils';
@@ -41,6 +46,13 @@ interface OmnibarProps {
   isInstalled?: boolean;
   onOpenInstall?: () => void;
   onResetInstall?: () => void;
+  onOpenStore?: () => void;
+  uBlockInstalled?: boolean;
+  uBlockBlockedCount?: number;
+  onToggleUBlockPopup?: () => void;
+  isUBlockPopupOpen?: boolean;
+  gamingModActive?: boolean;
+  gamingColor?: string;
 }
 
 export const Omnibar: React.FC<OmnibarProps> = ({
@@ -61,13 +73,38 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   isInstalled = false,
   onOpenInstall,
   onResetInstall,
+  onOpenStore,
+  uBlockInstalled = false,
+  uBlockBlockedCount = 0,
+  onToggleUBlockPopup,
+  isUBlockPopupOpen = false,
+  gamingModActive = false,
+  gamingColor = '#ff003c',
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [isSecurityOpen, setIsSecurityOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [micRequestStatus, setMicRequestStatus] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleRequestSiteMic = async () => {
+    setMicRequestStatus('Отправляю запрос...');
+    try {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+        setMicRequestStatus('Доступ к микрофону разрешён!');
+        setTimeout(() => setMicRequestStatus(null), 3000);
+      } else {
+        setMicRequestStatus('getUserMedia не поддерживается');
+      }
+    } catch (e: any) {
+      setMicRequestStatus('Доступ отклонён браузером');
+      setTimeout(() => setMicRequestStatus(null), 3500);
+    }
+  };
 
   const isLight = theme === 'light';
 
@@ -136,10 +173,15 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   return (
     <div
       className={`h-10 border-b px-3 flex items-center justify-between gap-2 select-none z-40 relative transition-colors ${
-        isLight
+        gamingModActive
+          ? 'bg-[#08090e] text-slate-100 shadow-md'
+          : isLight
           ? 'bg-white border-slate-200 text-slate-800'
-          : 'bg-slate-900 border-slate-800/80 text-slate-100'
+          : 'bg-[#0b101d] border-[#162238] text-slate-100'
       }`}
+      style={{
+        borderBottomColor: gamingModActive ? `${gamingColor}40` : undefined,
+      }}
     >
       {/* Navigation Controls */}
       <div className="flex items-center gap-1">
@@ -197,7 +239,11 @@ export const Omnibar: React.FC<OmnibarProps> = ({
       <form onSubmit={handleSubmit} className="flex-1 max-w-4xl relative">
         <div
           className={`h-8 w-full rounded-lg border transition-all flex items-center px-3 gap-2 ${
-            isLight
+            gamingModActive
+              ? isFocused
+                ? 'bg-[#090b11] shadow-lg'
+                : 'bg-[#06070c] hover:border-slate-700'
+              : isLight
               ? isFocused
                 ? 'bg-white border-amber-500 ring-2 ring-amber-400/20'
                 : isDangerous
@@ -213,6 +259,14 @@ export const Omnibar: React.FC<OmnibarProps> = ({
               ? 'bg-slate-950 border-slate-800 hover:border-slate-700'
               : 'bg-slate-950 border-rose-500/80 hover:border-rose-400'
           }`}
+          style={{
+            borderColor: gamingModActive
+              ? isFocused
+                ? gamingColor
+                : `${gamingColor}30`
+              : undefined,
+            boxShadow: gamingModActive && isFocused ? `0 0 12px ${gamingColor}35` : undefined,
+          }}
         >
           {/* Dynamic Corner Lock Indicator (Closed = Secure / Open = Insecure) */}
           <button
@@ -337,6 +391,34 @@ export const Omnibar: React.FC<OmnibarProps> = ({
               )}
             </div>
 
+            {/* Media & Device Permissions (Microphone & Camera for Omegle/WebRTC) */}
+            <div className="p-2.5 rounded-lg bg-slate-800/60 border border-slate-700/60 mb-3 space-y-1.5 text-slate-200">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <Mic className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Микрофон (WebRTC/Omegle):</span>
+                </span>
+                <span className="text-emerald-400 font-semibold text-[10px]">Разрешено</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Камера (WebRTC/Omegle):</span>
+                </span>
+                <span className="text-emerald-400 font-semibold text-[10px]">Разрешено</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRequestSiteMic}
+                className="w-full mt-1.5 py-1.5 px-2 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                title="Отправить системный запрос доступа к микрофону в браузере"
+              >
+                <Mic className="w-3 h-3 text-purple-300" />
+                <span>{micRequestStatus || 'Послать доступ к микрофону 🎙️'}</span>
+              </button>
+            </div>
+
             {/* User action: Declare unsafe and delete site */}
             {isWebPage && onDeleteCurrentSite && (
               <button
@@ -368,15 +450,15 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           <button
             type="button"
             onClick={onOpenInstall}
-            title="Установить Robail Browser v18.0 на компьютер (RobailBrowser-v18.0-Setup.exe)"
+            title="Установить Robail Browser v18.0 как приложение на компьютер"
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-sm border cursor-pointer animate-in fade-in duration-200 ${
               isLight
                 ? 'bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-900 ring-1 ring-amber-400/20'
-                : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-300 hover:text-white'
+                : 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300 hover:text-white ring-1 ring-amber-400/20'
             }`}
           >
-            <Download className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-            <span className="hidden sm:inline">Установить</span>
+            <AppWindow className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            <span className="hidden sm:inline">Установить приложение</span>
             <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500 text-black">
               v18.0
             </span>
@@ -385,15 +467,38 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           <button
             type="button"
             onClick={onOpenInstall}
-            title="Robail Browser v18.0 (нажмите, чтобы скачать повторно или переустановить)"
+            title="Robail Browser v18.0 установлено (нажмите для настроек приложения)"
             className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors border cursor-pointer ${
               isLight
                 ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
                 : 'bg-emerald-950/30 hover:bg-emerald-900/40 border-emerald-700/40 text-emerald-300'
             }`}
           >
-            <Download className="w-3 h-3 text-emerald-400" />
-            <span className="hidden md:inline text-[10px]">v18.0</span>
+            <AppWindow className="w-3 h-3 text-emerald-400" />
+            <span className="hidden md:inline text-[10px]">Приложение v18.0</span>
+          </button>
+        )}
+
+        {/* Robail Shield AdBlock Extension Button */}
+        {uBlockInstalled && (
+          <button
+            type="button"
+            onClick={onToggleUBlockPopup}
+            title={`Robail Shield AdBlock — Заблокировано рекламы: ${uBlockBlockedCount}`}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+              isUBlockPopupOpen
+                ? 'bg-rose-950/80 border-rose-500 text-rose-200 ring-2 ring-rose-500/40 shadow-xs shadow-rose-900/40'
+                : isLight
+                ? 'bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700'
+                : 'bg-slate-900/90 hover:bg-rose-950/30 border-slate-800 hover:border-rose-500/40 text-slate-300 hover:text-rose-300'
+            }`}
+          >
+            <div className="w-4 h-4 rounded bg-rose-600 flex items-center justify-center text-white text-[9px] font-black shadow-xs">
+              RS
+            </div>
+            <span className="hidden sm:inline text-[11px] font-mono font-bold text-rose-400">
+              {uBlockBlockedCount}
+            </span>
           </button>
         )}
 
@@ -465,7 +570,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           type="button"
           data-settings-trigger="true"
           onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-          title="Настройки браузера (тема, ассистент Омега, версии)"
+          title="Настройки браузера (тема, ассистент Омега, Магазин Rabadail, версии)"
           className={`p-1.5 rounded-lg transition-all flex items-center justify-center cursor-pointer border ${
             isSettingsOpen
               ? isLight
@@ -493,9 +598,9 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         }}
         onOpenQuarantine={onOpenQuarantineList}
         onClearData={onClearData}
-        isInstalled={isInstalled}
-        onOpenInstall={onOpenInstall}
-        onResetInstall={onResetInstall}
+        onOpenStore={onOpenStore}
+        uBlockInstalled={uBlockInstalled}
+        gamingModActive={gamingModActive}
       />
 
       {/* Omega AI Assistant Popover */}

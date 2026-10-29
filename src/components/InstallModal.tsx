@@ -3,16 +3,21 @@ import {
   Download,
   X,
   CheckCircle2,
-  HardDrive,
   Sparkles,
-  Shield,
   Zap,
-  RotateCcw,
-  Laptop,
+  AlertTriangle,
+  AppWindow,
+  Monitor,
+  ArrowRight,
+  Info,
   FileCode,
-  Play,
-  AlertCircle,
+  HardDrive,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  Globe,
 } from 'lucide-react';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 interface InstallModalProps {
   isOpen: boolean;
@@ -20,6 +25,8 @@ interface InstallModalProps {
   onInstallComplete: () => void;
   isInstalled: boolean;
   theme?: 'dark' | 'light';
+  autoPrompted?: boolean;
+  gamingModActive?: boolean;
 }
 
 export const InstallModal: React.FC<InstallModalProps> = ({
@@ -28,38 +35,43 @@ export const InstallModal: React.FC<InstallModalProps> = ({
   onInstallComplete,
   isInstalled,
   theme = 'dark',
+  autoPrompted = false,
+  gamingModActive = false,
 }) => {
-  const [status, setStatus] = useState<'idle' | 'downloading' | 'installing' | 'completed'>(
-    isInstalled ? 'completed' : 'idle'
-  );
-  const [progress, setProgress] = useState(isInstalled ? 100 : 0);
-  const [statusText, setStatusText] = useState('Готов к запуску и установке Омеги v8.0');
+  const { isInstallable, install, browserType, isIOS } = usePWAInstall();
+  const [showGuide, setShowGuide] = useState(true);
+  const [showLegacyDownloads, setShowLegacyDownloads] = useState(false);
+  const [installedStatus, setInstalledStatus] = useState(isInstalled);
+  const [downloadMsg, setDownloadMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isInstalled) {
-      setStatus('completed');
-      setProgress(100);
-      setStatusText('Браузер Robail v18.0 и Омега v8.0 готовы к работе');
-    } else {
-      setStatus('idle');
-      setProgress(0);
-      setStatusText('Готов к запуску и установке Омеги v8.0');
-    }
-  }, [isInstalled, isOpen]);
+    setInstalledStatus(isInstalled);
+  }, [isInstalled]);
 
   if (!isOpen) return null;
 
   const isLight = theme === 'light';
 
-  // Instant in-browser direct launch of Omega v8.0
-  const handleLaunchOmegaDirectly = () => {
+  const handleInstallAppClick = async () => {
+    if (isInstallable) {
+      const success = await install();
+      if (success) {
+        setInstalledStatus(true);
+        onInstallComplete();
+      }
+    } else {
+      setShowGuide(true);
+    }
+  };
+
+  const handleConfirmInstalled = () => {
+    setInstalledStatus(true);
     onInstallComplete();
     onClose();
-    // Dispatch custom event to immediately open Omega Assistant
-    window.dispatchEvent(new CustomEvent('robail-open-omega'));
   };
 
   const triggerExeDownload = () => {
+    setDownloadMsg('Загрузка .EXE файла (с предупреждением о Microsoft Store)...');
     try {
       const link = document.createElement('a');
       link.href = '/api/download/robail-setup.exe';
@@ -70,9 +82,11 @@ export const InstallModal: React.FC<InstallModalProps> = ({
     } catch {
       window.location.href = '/api/download/robail-setup.exe';
     }
+    setTimeout(() => setDownloadMsg(null), 4000);
   };
 
   const triggerCmdDownload = () => {
+    setDownloadMsg('Загрузка лаунчера .CMD (Без проверок Microsoft Store)...');
     try {
       const link = document.createElement('a');
       link.href = '/api/download/robail-setup.cmd';
@@ -83,73 +97,54 @@ export const InstallModal: React.FC<InstallModalProps> = ({
     } catch {
       window.location.href = '/api/download/robail-setup.cmd';
     }
-  };
-
-  const handleStartInstallation = (type: 'exe' | 'cmd' = 'cmd') => {
-    setStatus('downloading');
-    setProgress(25);
-    setStatusText(
-      type === 'exe'
-        ? 'Загрузка RobailBrowser-v18.0-Setup.exe...'
-        : 'Загрузка лаунчера RobailBrowser-v18.0-Setup.cmd (Без Microsoft Store)...'
-    );
-
-    if (type === 'exe') {
-      triggerExeDownload();
-    } else {
-      triggerCmdDownload();
-    }
-
-    setTimeout(() => {
-      setProgress(55);
-      setStatusText('Настройка прямого запуска Омеги v8.0 в обход Microsoft Store...');
-    }, 500);
-
-    setTimeout(() => {
-      setStatus('installing');
-      setProgress(85);
-      setStatusText('Подготовка ярлыка и новейшего ИИ-помощника Омега v8.0...');
-    }, 1100);
-
-    setTimeout(() => {
-      setProgress(100);
-      setStatus('completed');
-      setStatusText('Готово! Запустите скачанный файл или нажмите «Запустить Омегу»!');
-      onInstallComplete();
-    }, 1700);
+    setTimeout(() => setDownloadMsg(null), 4000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-200 overflow-y-auto">
       <div
-        className={`w-full max-w-lg rounded-2xl shadow-2xl border overflow-hidden flex flex-col ${
+        className={`w-full max-w-xl rounded-2xl shadow-2xl border overflow-hidden flex flex-col my-auto ${
           isLight
             ? 'bg-white border-slate-200 text-slate-800'
-            : 'bg-slate-900 border-slate-750 text-slate-100 ring-1 ring-amber-500/20'
+            : 'bg-slate-900 border-slate-750 text-slate-100 ring-1 ring-amber-500/25'
         }`}
       >
         {/* Header */}
         <div
-          className={`px-6 py-4 flex items-center justify-between border-b ${
-            isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/70 border-slate-800'
+          className={`px-5 py-4 flex items-center justify-between border-b ${
+            isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/80 border-slate-800'
           }`}
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-black font-black text-sm shadow-md">
-              R
-            </div>
+            {gamingModActive ? (
+              <div className="w-10 h-10 rounded-xl overflow-hidden bg-black/60 border border-red-500/40 p-0.5 flex items-center justify-center shadow-md shadow-red-500/20 shrink-0">
+                <img
+                  src="/rbl_gx_logo.png"
+                  alt="Robail Logo"
+                  className="w-full h-full object-contain rounded-lg select-none"
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-400 via-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-sky-500/30 text-white shrink-0">
+                <Globe className="w-6 h-6" />
+              </div>
+            )}
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm">Установка Robail & Омега</h3>
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-sm sm:text-base">
+                  {gamingModActive ? 'Установка RBL GX Browser' : 'Установка Robile Browser'}
+                </h3>
+                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                  v18.0
+                </span>
+                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">
                   Омега v8.0
                 </span>
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30">
-                  Браузер v18.0
-                </span>
               </div>
-              <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                Прямой запуск без требований и ошибок Microsoft Store
+              <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                {autoPrompted
+                  ? 'Добро пожаловать! Установите браузер на свой рабочий стол'
+                  : 'Официальный мастер установки автономного приложения'}
               </p>
             </div>
           </div>
@@ -161,62 +156,143 @@ export const InstallModal: React.FC<InstallModalProps> = ({
                 ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-200'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
-            title="Закрыть"
+            title="Закрыть окно (Esc)"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-4">
-          {/* Direct One-Click Launch Hero Button */}
+        {/* Content Body */}
+        <div className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+          {/* CRITICAL WARNING BOX: EXE installer has issues */}
           <div
-            className={`p-4 rounded-2xl border flex flex-col gap-3 ${
+            className={`p-4 rounded-xl border flex items-start gap-3.5 shadow-sm ${
               isLight
-                ? 'bg-purple-50 border-purple-200 text-purple-950'
-                : 'bg-gradient-to-r from-purple-950/50 to-indigo-950/50 border-purple-500/40 text-purple-100 ring-1 ring-purple-500/30'
+                ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                : 'bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-slate-900/50 border-amber-500/40 text-amber-200 ring-1 ring-amber-500/20'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-purple-600 text-white shadow-md shadow-purple-600/30">
-                <Sparkles className="w-5 h-5 text-white" />
+            <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5 animate-pulse" />
+            <div className="text-xs space-y-1.5">
+              <div className="font-bold text-amber-300 text-[13px] flex items-center gap-1.5">
+                <span>Внимание: с файлом .EXE есть неполадки</span>
               </div>
-              <div>
-                <div className="font-bold text-sm">Быстрый запуск Омеги v8.0</div>
-                <div className="text-[11px] text-purple-300">
-                  Работает прямо здесь — без скачивания и без Microsoft Store!
+              <p className={`leading-relaxed text-[11px] ${isLight ? 'text-amber-900' : 'text-slate-300'}`}>
+                При попытке запуска обычного установщика <strong>.exe</strong> в Windows могут возникать ошибки: система требует <em>«докачать что-то в Microsoft Store»</em>, SmartScreen или антивирус блокируют файл, либо установщик не запускается.
+              </p>
+              <div className="pt-0.5 font-medium text-emerald-400 text-[11px]">
+                👉 <strong>Решение разработчика:</strong> используйте официальную встроенную функцию браузера — <strong>«Установить как приложение»</strong>. Это работает на 100% стабильно прямо сейчас без Microsoft Store!
+              </div>
+            </div>
+          </div>
+
+          {/* PRIMARY RECOMMENDED ACTION: Install as Browser Application */}
+          <div
+            className={`p-4 sm:p-5 rounded-2xl border flex flex-col gap-3.5 shadow-md ${
+              isLight
+                ? 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200 text-indigo-950'
+                : 'bg-gradient-to-br from-purple-950/60 via-indigo-950/40 to-slate-900 border-purple-500/50 text-white ring-1 ring-purple-500/40'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-purple-600 text-white shadow-lg shadow-purple-600/30">
+                  <AppWindow className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <div className="font-bold text-sm sm:text-base flex items-center gap-2">
+                    <span>Установить как приложение</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      Рекомендуется
+                    </span>
+                  </div>
+                  <div className="text-xs text-purple-200/90 mt-0.5">
+                    Встраивается в Windows и ваш браузер: ярлык на Рабочем столе и в Пуске
+                  </div>
                 </div>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleLaunchOmegaDirectly}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all cursor-pointer"
-            >
-              <Play className="w-4 h-4 fill-white" />
-              <span>Запустить Омегу v8.0 прямо сейчас ⚡</span>
-            </button>
-          </div>
+            {/* Main Action Button */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleInstallAppClick}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-amber-500 hover:from-purple-500 hover:via-indigo-500 hover:to-amber-400 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <Monitor className="w-4 h-4" />
+                <span>⚡ Установить Robail как приложение</span>
+              </button>
 
-          {/* Microsoft Store Bypass Notice Box */}
-          <div
-            className={`p-3.5 rounded-xl border flex items-start gap-3 ${
-              isLight
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
-                : 'bg-emerald-950/20 border-emerald-800/40 text-emerald-200'
-            }`}
-          >
-            <Shield className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-            <div className="text-xs space-y-1">
-              <div className="font-bold text-emerald-400">100% запуск БЕЗ Microsoft Store</div>
-              <p className={`leading-relaxed text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                Если Windows пишет «нужно что-то докачать в Microsoft Store», скачайте <strong>Лаунчер .CMD</strong> ниже. Он запускается на любом ПК без проверок магазина и сразу открывает Омегу v8.0!
-              </p>
+              <button
+                type="button"
+                onClick={handleConfirmInstalled}
+                className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/40 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                title="Отметить установку завершённой и запустить браузер"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>Уже установил / Запустить</span>
+              </button>
+            </div>
+
+            {/* Quick Step-by-step visual instruction */}
+            <div className="pt-2 border-t border-purple-500/30 text-xs space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowGuide(!showGuide)}
+                className="flex items-center justify-between w-full text-left font-semibold text-purple-200 hover:text-white cursor-pointer"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Инструкция по установке в 1 клик для вашего браузера:</span>
+                </span>
+                {showGuide ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {showGuide && (
+                <div
+                  className={`p-3 rounded-xl border text-[11px] leading-relaxed space-y-2 ${
+                    isLight
+                      ? 'bg-white/80 border-indigo-200 text-slate-700'
+                      : 'bg-black/40 border-purple-900/60 text-slate-300'
+                  }`}
+                >
+                  {browserType === 'edge' ? (
+                    <div>
+                      <span className="font-bold text-white">В Microsoft Edge:</span> Нажмите на значок{' '}
+                      <strong>«Доступно приложение» ⊞</strong> в строке адреса справа или нажмите меню <strong>(···) ➔ «Приложения» ➔ «Установить этот сайт как приложение»</strong>.
+                    </div>
+                  ) : browserType === 'yandex' ? (
+                    <div>
+                      <span className="font-bold text-white">В Яндекс Браузере:</span> Нажмите на кнопку меню <strong>(≡) ➔ «Дополнительно» ➔ «Установить приложение Robail»</strong>.
+                    </div>
+                  ) : isIOS ? (
+                    <div>
+                      <span className="font-bold text-white">На iPhone/iPad (Safari):</span> Нажмите кнопку <strong>«Поделиться»</strong> внизу ➔ выберите <strong>«На экран Домой»</strong>.
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="font-bold text-white">В Google Chrome / Любом браузере:</span>
+                      <ul className="list-disc list-inside mt-1 space-y-0.5 text-slate-300">
+                        <li>
+                          Нажмите иконку <strong>«Установить приложение» 🖥️</strong> в правом углу адресной строки, либо
+                        </li>
+                        <li>
+                          Откройте меню Chrome (три точки ⋮) ➔ <strong>«Сохранить и поделиться» ➔ «Установить Robail Browser...»</strong>.
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-amber-400 pt-1 font-medium">
+                    ✓ Приложение появится на рабочем столе и будет запускаться как отдельная быстрая программа без Microsoft Store!
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Features list */}
+          {/* Features Highlight */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div
               className={`p-2.5 rounded-xl border flex items-center gap-2.5 ${
@@ -226,7 +302,7 @@ export const InstallModal: React.FC<InstallModalProps> = ({
               <Sparkles className="w-4 h-4 text-purple-400 flex-shrink-0" />
               <div>
                 <div className="font-semibold text-[11px]">ИИ Омега v8.0</div>
-                <div className="text-[10px] text-slate-500">Самая новая версия</div>
+                <div className="text-[10px] text-slate-500">Голос + новейший интеллект</div>
               </div>
             </div>
 
@@ -237,118 +313,98 @@ export const InstallModal: React.FC<InstallModalProps> = ({
             >
               <Zap className="w-4 h-4 text-amber-500 flex-shrink-0" />
               <div>
-                <div className="font-semibold text-[11px]">Браузер v18.0</div>
-                <div className="text-[10px] text-slate-500">Turbo YouTube + Shield</div>
+                <div className="font-semibold text-[11px]">Robail Browser v18.0</div>
+                <div className="text-[10px] text-slate-500">Turbo YouTube + Omegle</div>
               </div>
             </div>
           </div>
 
-          {/* Installation Progress Area */}
-          {(status === 'downloading' || status === 'installing' || status === 'completed') && (
-            <div
-              className={`p-4 rounded-xl border space-y-2.5 ${
-                isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/80 border-slate-800'
-              }`}
-            >
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold flex items-center gap-2">
-                  {status === 'completed' ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  ) : (
-                    <div className="w-3.5 h-3.5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                  )}
-                  <span>{statusText}</span>
-                </span>
-                <span className="font-mono text-purple-400 font-bold">{progress}%</span>
-              </div>
-
-              {/* Progress bar */}
-              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 rounded-full ${
-                    status === 'completed'
-                      ? 'bg-emerald-500'
-                      : 'bg-gradient-to-r from-purple-500 to-amber-400'
-                  }`}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-
-              {status === 'completed' && (
-                <div className="space-y-1.5 pt-1">
-                  <div className="text-[11px] text-emerald-400 font-medium">
-                    ✓ Установщик успешно загружен! Запустите файл на компьютере — он откроет браузер и Омегу v8.0.
-                  </div>
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleStartInstallation('cmd')}
-                      className="text-[10px] text-sky-400 hover:text-sky-300 underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Скачать .CMD снова</span>
-                    </button>
-                    <span className="text-slate-600">•</span>
-                    <button
-                      type="button"
-                      onClick={() => handleStartInstallation('exe')}
-                      className="text-[10px] text-amber-400 hover:text-amber-300 underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <HardDrive className="w-3 h-3" />
-                      <span>Скачать .EXE</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+          {/* Download message feedback */}
+          {downloadMsg && (
+            <div className="p-2.5 rounded-xl bg-purple-950/70 border border-purple-500/40 text-xs text-purple-200 flex items-center gap-2 animate-pulse">
+              <div className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+              <span>{downloadMsg}</span>
             </div>
           )}
+
+          {/* Collapsible Legacy Files Section (.CMD and .EXE) with clear caveats */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowLegacyDownloads(!showLegacyDownloads)}
+              className="text-[11px] text-slate-400 hover:text-amber-400 flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <span>Запасные варианты файлов (лабораторные .CMD и .EXE)</span>
+              {showLegacyDownloads ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            {showLegacyDownloads && (
+              <div
+                className={`mt-2 p-3.5 rounded-xl border space-y-2.5 text-xs animate-in fade-in duration-150 ${
+                  isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/80 border-slate-800'
+                }`}
+              >
+                <div className="text-[11px] text-slate-400">
+                  Если вы всё равно хотите скачать файл на диск, воспользуйтесь скриптом <strong>.CMD</strong> (он обходит Microsoft Store) или <strong>.EXE</strong>:
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* CMD */}
+                  <button
+                    type="button"
+                    onClick={triggerCmdDownload}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <FileCode className="w-3.5 h-3.5" />
+                    <span>Скачать Лаунчер .CMD (Без Store)</span>
+                  </button>
+
+                  {/* EXE */}
+                  <button
+                    type="button"
+                    onClick={triggerExeDownload}
+                    className="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer transition-colors"
+                    title="Внимание: может требовать компоненты Microsoft Store на Windows"
+                  >
+                    <HardDrive className="w-3.5 h-3.5" />
+                    <span>Скачать .EXE (Может сбоить)</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Footer Actions */}
+        {/* Footer */}
         <div
-          className={`px-6 py-4 flex items-center justify-between border-t ${
-            isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/70 border-slate-800'
+          className={`px-5 py-3.5 flex items-center justify-between border-t ${
+            isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/80 border-slate-800'
           }`}
         >
           <div className="text-[11px] text-slate-500 font-mono">
-            Омега v8.0 • Браузер v18.0
+            {installedStatus ? '✓ Приложение установлено' : 'Robail v18.0 • PWA'}
           </div>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                 isLight
                   ? 'bg-slate-200 hover:bg-slate-300 text-slate-700'
                   : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
               }`}
             >
-              Закрыть
+              {installedStatus ? 'Закрыть' : 'Напомнить позже'}
             </button>
 
-            {/* Direct CMD Launcher - recommended because it bypasses Microsoft Store */}
             <button
               type="button"
-              disabled={status === 'downloading' || status === 'installing'}
-              onClick={() => handleStartInstallation('cmd')}
-              title="Скачать установщик-скрипт Windows (.CMD), который запускается без Microsoft Store"
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer disabled:opacity-50"
+              onClick={handleConfirmInstalled}
+              className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
             >
-              <FileCode className="w-4 h-4" />
-              <span>Скачать .CMD (Без Store)</span>
-            </button>
-
-            {/* EXE */}
-            <button
-              type="button"
-              disabled={status === 'downloading' || status === 'installing'}
-              onClick={() => handleStartInstallation('exe')}
-              title="Скачать исполняемый файл .EXE"
-              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>.EXE</span>
+              <span>Продолжить в браузере</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

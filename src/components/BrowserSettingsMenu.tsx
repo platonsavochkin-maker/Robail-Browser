@@ -15,6 +15,9 @@ import {
   Download,
   CheckCircle2,
   RotateCcw,
+  ShoppingBag,
+  Gamepad2,
+  Globe,
 } from 'lucide-react';
 
 interface BrowserSettingsMenuProps {
@@ -26,9 +29,9 @@ interface BrowserSettingsMenuProps {
   onToggleAssistant: (enabled: boolean) => void;
   onOpenQuarantine?: () => void;
   onClearData?: () => void;
-  isInstalled?: boolean;
-  onOpenInstall?: () => void;
-  onResetInstall?: () => void;
+  onOpenStore?: () => void;
+  uBlockInstalled?: boolean;
+  gamingModActive?: boolean;
 }
 
 export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
@@ -40,9 +43,9 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
   onToggleAssistant,
   onOpenQuarantine,
   onClearData,
-  isInstalled = false,
-  onOpenInstall,
-  onResetInstall,
+  onOpenStore,
+  uBlockInstalled = false,
+  gamingModActive = false,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showStory, setShowStory] = useState(false);
@@ -105,13 +108,19 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
         }`}
       >
         <div className="flex items-center gap-2">
-          <div
-            className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs ${
-              isLight ? 'bg-amber-500 text-black' : 'bg-amber-400 text-black'
-            }`}
-          >
-            R
-          </div>
+          {gamingModActive ? (
+            <div className="w-6 h-6 rounded-md overflow-hidden bg-black/60 border border-red-500/40 p-0.5 flex items-center justify-center shrink-0">
+              <img
+                src="/rbl_gx_logo.png"
+                alt="Logo"
+                className="w-full h-full object-contain rounded-xs"
+              />
+            </div>
+          ) : (
+            <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center text-white shrink-0 shadow-xs">
+              <Globe className="w-3.5 h-3.5" />
+            </div>
+          )}
           <div>
             <h3 className="text-xs font-bold leading-tight">Настройки браузера</h3>
             <span
@@ -119,7 +128,7 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
                 isLight ? 'text-slate-500' : 'text-slate-400'
               }`}
             >
-              Robail Browser v18.0
+              {gamingModActive ? 'RBL GX Gaming v18.0' : 'Robile Browser v18.0'}
             </span>
           </div>
         </div>
@@ -277,66 +286,55 @@ export const BrowserSettingsMenu: React.FC<BrowserSettingsMenuProps> = ({
           </div>
         </div>
 
-        {/* 3. EXE Installation Status */}
+        {/* 3. Rabadail Store & Extensions (Robail Shield & RBL GX) */}
         <div
-          className={`p-3 rounded-xl border ${
-            isLight
-              ? 'bg-slate-50 border-slate-200 text-slate-700'
-              : 'bg-slate-950/70 border-slate-800 text-slate-300'
+          className={`p-3.5 rounded-xl border ${
+            gamingModActive
+              ? 'bg-red-950/30 border-red-500/40 text-slate-200'
+              : isLight
+              ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200 text-slate-800'
+              : 'bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-900 border-purple-500/30 text-slate-200'
           }`}
         >
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Download className="w-3.5 h-3.5 text-amber-500" />
-              <span>Версия приложения</span>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Магазин Rabadail</span>
             </span>
-            <span
-              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                isInstalled
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-amber-500/20 text-amber-500 border border-amber-500/30'
-              }`}
-            >
-              {isInstalled ? 'Установлен v18.0' : 'Доступно обновление v18.0'}
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              Расширения & Моды
             </span>
           </div>
 
-          <div className="space-y-2">
-            {isInstalled ? (
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-500">
-                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                <span>Браузер Robail v18.0 установлен на ПК</span>
-              </div>
-            ) : (
-              <p className="text-[11px] text-slate-400">
-                Автономная версия браузера для Windows 10/11 с нативной поддержкой:
-              </p>
-            )}
+          <p className="text-[11px] text-slate-400 mb-3 leading-relaxed">
+            Каталог официальных дополнений: расширения <strong>Robail Shield</strong> (блокировка рекламы), <strong>SponsorBlock</strong> (пропуск спонсорских вставок) и геймерский мод <strong>RBL GX</strong>.
+          </p>
 
-            {/* Always provide direct download / reinstall action so user is never locked out */}
-            {onOpenInstall && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenInstall();
-                }}
-                className="w-full py-1.5 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>{isInstalled ? 'Скачать установщик v18.0 снова' : 'Установить Robail .EXE v18.0'}</span>
-              </button>
-            )}
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              if (onOpenStore) onOpenStore();
+            }}
+            className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-rose-600 hover:from-purple-500 hover:via-indigo-500 hover:to-rose-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-purple-600/30"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span>Открыть Магазин Rabadail 🛍️</span>
+          </button>
 
-            {isInstalled && onResetInstall && (
-              <button
-                type="button"
-                onClick={onResetInstall}
-                className="text-[10px] text-slate-500 hover:text-amber-400 underline flex items-center gap-1 transition-colors cursor-pointer"
-              >
-                <RotateCcw className="w-2.5 h-2.5" />
-                <span>Сбросить статус установки</span>
-              </button>
+          {/* Quick status badges */}
+          <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+            {uBlockInstalled && (
+              <span className="text-[10px] px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+                <Check className="w-3 h-3 text-emerald-400" />
+                <span>Robail Shield активен</span>
+              </span>
+            )}
+            {gamingModActive && (
+              <span className="text-[10px] px-2 py-0.5 rounded-md bg-red-500/20 text-red-300 border border-red-500/30 flex items-center gap-1">
+                <Gamepad2 className="w-3 h-3 text-red-400" />
+                <span>RBL GX активен</span>
+              </span>
             )}
           </div>
         </div>
